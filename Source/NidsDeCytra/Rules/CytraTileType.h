@@ -28,3 +28,21 @@ enum class ECytraTileType : uint8
 	/** Last cell of every route. */
 	Nest,
 };
+
+/** A tile that can hold a tower. */
+inline bool IsCytraSlot(ECytraTileType Type)
+{
+	return Type == ECytraTileType::Slot || Type == ECytraTileType::HighSlot;
+}
+
+/** A tile that blocks workers until a job opens it. */
+inline bool IsCytraObstacle(ECytraTileType Type)
+{
+	return Type == ECytraTileType::Rubble || Type == ECytraTileType::Gap || Type == ECytraTileType::Cliff;
+}
+
+/** A tile that a job can open once: obstacles, the mine and the outpost site. */
+inline bool IsCytraOpenable(ECytraTileType Type)
+{
+	return IsCytraObstacle(Type) || Type == ECytraTileType::Mine || Type == ECytraTileType::OutpostSite;
+}

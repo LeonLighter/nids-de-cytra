@@ -1,0 +1,51 @@
+{
+  "map": "Passe01",
+  "waves": [
+    [
+      { "route": "North", "enemy": "Bandit", "count": 8, "interval": 1.1 }
+    ],
+    [
+      { "route": "South", "enemy": "Bandit", "count": 9, "interval": 1.0 }
+    ],
+    [
+      { "route": "North", "enemy": "Bandit", "count": 7, "interval": 1.0 },
+      { "route": "South", "enemy": "Bandit", "count": 7, "interval": 1.0, "delay": 2 }
+    ],
+    [
+      { "route": "North", "enemy": "Adventurer", "count": 10, "interval": 0.6 },
+      { "route": "South", "enemy": "Bandit", "count": 6, "interval": 1.2, "delay": 3 }
+    ],
+    [
+      { "route": "North", "enemy": "Soldier", "count": 2, "interval": 3.0 },
+      { "route": "South", "enemy": "Bandit", "count": 10, "interval": 0.9 }
+    ],
+    [
+      { "route": "South", "enemy": "Adventurer", "count": 12, "interval": 0.55 },
+      { "route": "North", "enemy": "Bandit", "count": 8, "interval": 0.9 },
+      { "route": "North", "enemy": "Soldier", "count": 1, "delay": 8 }
+    ],
+    [
+      { "route": "South", "enemy": "Soldier", "count": 3, "interval": 2.5 },
+      { "route": "North", "enemy": "Bandit", "count": 12, "interval": 0.8 },
+      { "route": "North", "enemy": "Adventurer", "count": 6, "interval": 0.6, "delay": 10 }
+    ],
+    [
+      { "route": "North", "enemy": "Adventurer", "count": 14, "interval": 0.5 },
+      { "route": "South", "enemy": "Adventurer", "count": 14, "interval": 0.5 },
+      { "route": "North", "enemy": "Soldier", "count": 2, "interval": 3.0, "delay": 6 },
+      { "route": "South", "enemy": "Soldier", "count": 2, "interval": 3.0, "delay": 6 }
+    ],
+    [
+      { "route": "North", "enemy": "Soldier", "count": 3, "interval": 2.4 },
+      { "route": "South", "enemy": "Soldier", "count": 3, "interval": 2.4 },
+      { "route": "North", "enemy": "Bandit", "count": 10, "interval": 0.7, "delay": 4 },
+      { "route": "South", "enemy": "Bandit", "count": 10, "interval": 0.7, "delay": 4 }
+    ],
+    [
+      { "route": "North", "enemy": "Captain", "count": 1 },
+      { "route": "South", "enemy": "Soldier", "count": 5, "interval": 2.0 },
+      { "route": "North", "enemy": "Bandit", "count": 12, "interval": 0.7, "delay": 3 },
+      { "route": "South", "enemy": "Adventurer", "count": 12, "interval": 0.5, "delay": 8 }
+    ]
+  ]
+}
