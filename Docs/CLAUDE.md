@@ -1,0 +1,109 @@
+# CLAUDE.md
+
+Tower defense à routes fixes dans l'univers d'Elternos, sur Unreal Engine 5, en C++.
+Titre de travail : Les Nids de Cytra.
+
+Le but actuel : reproduire dans Unreal le prototype web validé, tel qu'il est, ni plus ni moins.
+
+## À lire avant de coder
+
+- `Docs/GDD.md` : la spécification. C'est la source de vérité pour les règles et les valeurs.
+- `Docs/prototype/nids-de-cytra.html` : le prototype web validé. Toute la logique de jeu est entre `/*LOGIC-START*/` et `/*LOGIC-END*/`, sans dépendance à l'affichage. En cas de doute sur un comportement, lis-la.
+- Si le GDD et le prototype se contredisent, ne tranche pas seul : signale l'écart et demande.
+
+## Environnement (à compléter au jalon J00, puis supprimer cette parenthèse)
+
+- Version du moteur : `<à lire dans EngineAssociation du .uproject>`
+- Dossier du moteur : `<par exemple C:\Program Files\Epic Games\UE_5.8>`
+- Projet : `<Nom>.uproject`, module de jeu `<Nom>`
+- Système : `<Windows, macOS ou Linux>`
+- Gestion de versions : Git avec Git LFS, dépôt privé sur GitHub, branche principale `main`
+
+## Commandes (modèles pour Windows ; remplace-les au jalon J00 par les commandes réelles et testées)
+
+Compiler l'éditeur :
+
+```
+"<UE>\Engine\Build\BatchFiles\Build.bat" <Nom>Editor Win64 Development -Project="<chemin>\<Nom>.uproject" -WaitMutex
+```
+
+Lancer les tests d'automatisation sans affichage :
+
+```
+"<UE>\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "<chemin>\<Nom>.uproject" -ExecCmds="Automation RunTest Cytra;Quit" -unattended -nopause -nosplash -nullrhi -log
+```
+
+La documentation 5.8 écrit `Automation RunTest`. Si aucun test ne se lance, essaie `Automation RunTests` et note ici la forme qui fonctionne. Le résultat se lit dans la sortie et dans `Saved/Logs/`.
+
+Git et GitHub :
+
+```
+git status                                  # ce qui a changé
+git switch -c jalon-20-ennemis              # crée la branche du jalon et bascule dessus
+git add -A && git commit -m "J20 Message"   # committe une étape qui compile
+git lfs ls-files                            # vérifie que les .uasset et .umap passent par Git LFS
+git push -u origin jalon-20-ennemis         # pousse la branche sur GitHub
+gh pr create --base main --title "J20 · Ennemis et vagues" --body-file <fichier>   # ouvre la pull request
+```
+
+## Règles de travail
+
+1. **Jamais d'asset binaire.** Ne crée ni ne modifie de `.uasset` ou de `.umap`. Si un asset est indispensable, arrête-toi et dis-moi précisément quoi créer dans l'éditeur : type, nom, dossier, réglages.
+2. **C++ d'abord.** Le jeu doit être jouable sans aucun Blueprint. Les visuels sont les formes de `/Engine/BasicShapes/` avec des matériaux dynamiques colorés. Je remplacerai par de vrais assets plus tard.
+3. **Données hors du code.** Carte, vagues, ennemis, tourelles, spécialités et coûts vivent dans des fichiers texte sous `Content/Data/`. Les ennemis et les spécialités vont changer : en ajouter un ne doit demander qu'une ligne de données, pas une nouvelle classe.
+4. **Règles séparées de l'affichage.** La logique (grille, accessibilité, chemins, économie, chantiers, vagues) est en classes C++ pures et déterministes, testables sans monde ni acteur. Les acteurs affichent l'état et relaient les ordres.
+5. **Compile et teste après chaque changement.** Rien n'est « terminé » sans compilation verte et tests verts. Dis toujours clairement ce que tu n'as pas pu vérifier, en particulier tout ce qui se juge à l'écran.
+6. **Éditeur fermé pour compiler.** Si la compilation échoue parce que l'éditeur est ouvert (Live Coding actif), demande-moi de le fermer. Ne contourne pas. Une nouvelle `UCLASS`, `USTRUCT` ou `UFUNCTION` demande un redémarrage de l'éditeur.
+7. **Git et GitHub.** Dépôt privé, branche principale `main`. Tu ne pousses jamais directement sur `main`. Jamais de `push --force`, de `reset --hard`, de `clean`, de `rebase` ni de réécriture d'historique sans que je le demande.
+8. **Une branche et une pull request par jalon.** Au début d'un jalon, crée sa branche `jalon-XX-nom` depuis `main` à jour (par exemple `jalon-20-ennemis`). Commits petits et fréquents, un par étape qui compile. À la fin du jalon, pousse la branche et ouvre une pull request vers `main` avec `gh pr create`, en mettant le résumé de session dans sa description. Ne fusionne pas la pull request : c'est moi qui fusionne après avoir vérifié le jalon en jeu.
+9. **Fichiers exclus et Git LFS.** `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/` et `.vs/` sont exclus par le `.gitignore`. Les `.uasset`, `.umap`, modèles, images et sons passent par Git LFS selon le `.gitattributes`. Avant un commit qui ajoute un binaire, vérifie avec `git lfs ls-files` qu'il est bien suivi par LFS. Un fichier déjà commité n'est plus ignoré : signale-moi tout fichier généré entré par erreur dans le dépôt.
+10. **Rien d'ajouté en douce.** Pas de nouveau plugin, module ou dépendance sans mon accord.
+11. **Un jalon à la fois.** Présente un plan avant d'écrire, attends ma validation, ne déborde pas sur le jalon suivant.
+12. **Résumé de session.** Termine chaque jalon par ce résumé, que je recopie dans Notion :
+
+```
+Jalon : J?? · nom
+Fait :
+Vérifié (compilation, tests) :
+À vérifier à l'écran par moi :
+Non vérifié ou risqué :
+Commit : branche, dernier commit, lien de la pull request
+Suite proposée :
+```
+
+## Hors périmètre tant que je ne le demande pas
+
+Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs, forgeron et améliorations d'équipe, autres cartes, sauvegarde, son, multijoueur, art final. Le GDD les liste en « Prévu pour la suite » : l'architecture ne doit pas les empêcher, mais on ne les code pas.
+
+## Conventions
+
+- Code, noms et commentaires de code en anglais. Textes affichés au joueur en français, regroupés en `FText` (table de chaînes) pour rester traduisibles.
+- Préfixe des types du jeu : `Cytra` (`ACytraGameMode`, `UCytraJobSubsystem`, `FCytraGrid`).
+- Standard de code d'Epic : PascalCase, préfixes `A`/`U`/`F`/`E`/`I`, `UPROPERTY` sur tout pointeur vers un `UObject`, includes minimaux.
+- Pas de `Tick` quand un timer ou un événement suffit.
+- Catégorie de journal : `LogCytra`.
+- Tests d'automatisation sous le préfixe `Cytra.` (par exemple `Cytra.Rules.Grid.ReachAtStart`).
+- Messages de commit en français, à l'impératif, préfixés du jalon : `J20 Ajoute le déplacement des ennemis`.
+
+## Architecture de départ (à affiner dans le plan du jalon J00)
+
+- `Source/<Nom>/Rules/` : logique pure. Définition de carte, grille et accessibilité, recherche de chemin (parcours en largeur, 4 voisins), économie, file de chantiers, calendrier des vagues, équilibrage chargé depuis les données.
+- `Source/<Nom>/Game/` : `ACytraGameMode` (déroulé : préparation, vague, victoire, défaite), `ACytraGameState` (or, œufs, vague, phase, compte à rebours), `ACytraPlayerController` (souris, sélection d'une case, ordres), `ACytraCameraPawn` (vue de dessus).
+- `Source/<Nom>/World/` : `ACytraBoard` (génère le plateau depuis la carte, en instanced static meshes), `ACytraEnemy`, `ACytraWorker`, `ACytraTower`, `ACytraProjectile`, `ACytraNest`.
+- `Source/<Nom>/UI/` : interface écrite en C++ (Slate, ou UMG construit en C++), sans Widget Blueprint.
+- `Source/<Nom>/Tests/` : tests d'automatisation.
+- `Content/Data/` : carte, vagues et équilibrage en JSON. Ce dossier doit être ajouté aux dossiers non-assets à empaqueter.
+- Entrées : Enhanced Input, actions et contexte créés en C++.
+- Vitesse ×1, ×2, ×3 par dilatation globale du temps. Pause par mise en pause du jeu, les ordres restant possibles en pause.
+
+## Jalons
+
+Les numéros vont de 10 en 10 et chaque phase a sa centaine : phase 1 (reproduire le prototype) de J00 à J90, phase 2 (nouvelles mécaniques) de J100 à J190, phase 3 (contenu) à partir de J200, phase 4 (finitions) à partir de J300. Un jalon ajouté plus tard prend un numéro libre entre deux, par exemple J25. Le suivi des jalons est tenu dans Notion ; quand j'ajoute un jalon, j'ajoute aussi sa ligne ici.
+
+- **J00 · Socle.** Environnement détecté, commandes vérifiées, `.gitignore` et `.gitattributes`, arborescence, premier test, classes de base du jeu, plateau de 24 × 14 cases généré depuis les données.
+- **J10 · Règles pures.** Grille, accessibilité, chaîne d'accès, chemins, économie, vagues, menace et temps de préparation, avec les tests de référence de la section 13 du GDD.
+- **J20 · Ennemis et vagues.** Ennemis sur les deux routes, nid et œufs, victoire et défaite, déroulé des vagues, affichage minimal (or, œufs, vague, lancer la vague).
+- **J30 · Ouvriers et chantiers.** Sélection d'une case à la souris, panneau d'ordres, ouvriers, déblayage, pont, échelle, avant-poste, retour au camp le plus proche.
+- **J40 · Tourelles.** Baliste, mortier, bobine, tirs, améliorations, démontage.
+- **J50 · Mine et recrutement.** Mine d'or, recrutement, bonus de lancement anticipé.
+- **J60 · Interface complète.** Panneau d'équipe, messages, pause, vitesse, écran de fin. Partie entière comparée au prototype.

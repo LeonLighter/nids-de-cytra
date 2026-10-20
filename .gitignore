@@ -1,0 +1,34 @@
+# Unreal Engine : dossiers et fichiers générés, jamais versionnés.
+# À placer à la racine du projet, à côté du .uproject, AVANT le premier commit.
+
+# Dossiers générés par Unreal
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# Dossiers générés par les plugins du projet
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Builds empaquetés, en gardant les icônes du projet
+Build/*
+!Build/*/
+Build/*/**
+!Build/**/*.ico
+
+# Fichiers d'IDE (régénérables)
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.code-workspace
+
+# Réglages personnels de Claude Code
+.claude/settings.local.json
+CLAUDE.local.md

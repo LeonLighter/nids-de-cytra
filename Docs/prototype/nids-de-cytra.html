@@ -1,0 +1,1070 @@
+<title>Les Nids de Cytra</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=IM+Fell+English+SC&display=swap">
+<style>
+/* Mise en page : bandeau d'état en haut, carte de la passe à gauche, ordres et équipe à droite ; tout s'empile sous 980px. */
+:root{
+  color-scheme: dark;
+  --rock-950:#10141b; --rock-900:#171c25; --rock-800:#1f2631; --rock-700:#2a3340; --rock-600:#3d4858;
+  --snow:#e9eef4; --mist:#9ca8b8;
+  --ember:#f0a04b; --ember-deep:#b9621a;
+  --gold:#f2cf63; --silk:#bba8ea; --blood:#e2695b; --moss:#8cc48d;
+  --w-mineur:#e3b341; --w-charp:#d17f45; --w-inge:#5cc4cc;
+  --font-display:"IM Fell English SC","Iowan Old Style",Georgia,serif;
+  --font-body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--rock-950);color:var(--snow);font-family:var(--font-body);font-size:16px;line-height:1.45}
+.wrap{max-width:1340px;margin-inline:auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3,p,ul,ol{margin:0}
+.head{display:flex;flex-direction:column;gap:4px}
+.eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist)}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(30px,4.4vw,46px);line-height:1.05;letter-spacing:.01em;text-wrap:balance}
+.lede{max-width:68ch;color:var(--mist);font-size:17px}
+
+.hud{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:10px 14px;background:var(--rock-900);border:1px solid var(--rock-700);border-radius:4px}
+.stat{display:flex;flex-direction:column;min-width:56px}
+.stat-l{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist)}
+.stat-v{font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat-v.gold{color:var(--gold)} .stat-v.silk{color:var(--silk)}
+.next{flex:1 1 240px;min-width:0;color:var(--mist);font-size:15px}
+.next b{color:var(--snow);font-weight:500}
+.threat{display:inline-flex;gap:3px;vertical-align:middle;margin-inline:5px 8px}
+.threat i{width:7px;height:12px;border:1px solid var(--blood);border-radius:1px}
+.threat i.on{background:var(--blood)}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px}
+
+.btn{font:inherit;font-weight:500;color:var(--snow);background:var(--rock-700);border:1px solid var(--rock-600);border-radius:3px;padding:8px 14px;cursor:pointer}
+.btn:hover{background:var(--rock-600)}
+.btn.primary{background:var(--ember);border-color:var(--ember);color:var(--rock-950);font-weight:700}
+.btn.primary:hover{background:#f7b469}
+.btn.primary:disabled{background:var(--rock-700);border-color:var(--rock-600);color:var(--mist);cursor:default}
+.btn.ghost{background:transparent}
+.btn.on{border-color:var(--ember);color:var(--ember)}
+button:focus-visible{outline:2px solid var(--snow);outline-offset:2px}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+.board{position:relative;min-width:0;border:1px solid var(--rock-700);border-radius:4px;background:var(--rock-900);overflow:hidden}
+.board-scroll{overflow-x:auto}
+canvas{display:block;width:100%;min-width:720px;height:auto;aspect-ratio:960/560;touch-action:manipulation}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;padding:8px 12px;border-top:1px solid var(--rock-700);font-size:14px;color:var(--mist);list-style:none}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;border-radius:50%}
+.sw.free{border:2px dashed var(--ember)}
+.sw.lock{border:2px dashed var(--mist)}
+.sw.high{border:2px solid var(--snow)}
+.sw.rub{background:#8a8072;border-radius:4px}
+.sw.gap{background:#05070a;border:1px solid var(--rock-600);border-radius:2px}
+.sw.clf{background:repeating-linear-gradient(0deg,#566173 0 2px,#2b3441 2px 5px);border-radius:2px}
+.sw.mine{background:#05070a;border:2px solid var(--gold);border-radius:7px 7px 2px 2px}
+.sw.post{background:#8a5a2c;border-radius:0;clip-path:polygon(50% 0,100% 45%,100% 100%,0 100%,0 45%)}
+.toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;background:rgba(16,20,27,.92);border:1px solid var(--rock-600);border-radius:3px;font-size:15px;text-align:center;pointer-events:none}
+.toast.warn{border-color:var(--blood);color:#ffd9d3}
+.toast.good{border-color:var(--moss)}
+.end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;background:rgba(16,20,27,.86)}
+.end h2{font-family:var(--font-display);font-weight:400;font-size:clamp(26px,4vw,40px);text-wrap:balance}
+.end p{max-width:46ch;color:var(--mist)}
+
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--rock-900);border:1px solid var(--rock-700);border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel h2{font-family:var(--font-display);font-weight:400;font-size:21px;line-height:1.15;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel h2 small{font-family:var(--font-body);font-size:14px;color:var(--mist);font-variant-numeric:tabular-nums}
+.panel p{font-size:15px;color:var(--mist)}
+.panel p.state{color:var(--snow)}
+.panel p.warn{color:#ffb9ae}
+.tag{align-self:flex-start;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px;border:1px solid var(--rock-600);color:var(--mist)}
+.tag.high{border-color:var(--snow);color:var(--snow)}
+.steps{padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.acts{display:flex;flex-direction:column;gap:8px}
+.act{font:inherit;text-align:left;display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:9px 12px;background:var(--rock-800);color:var(--snow);border:1px solid var(--rock-600);border-radius:3px;cursor:pointer}
+.act:hover{border-color:var(--ember)}
+.act-name{font-weight:700}
+.act-cost{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.act-meta{grid-column:1/-1;font-size:14px;color:var(--mist)}
+.act-why{grid-column:1/-1;font-size:14px;color:#ffb9ae}
+.act.off{opacity:.62}
+.act.off:hover{border-color:var(--rock-600)}
+.link{font:inherit;color:var(--ember);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;font-size:15px}
+.kv dt{color:var(--mist)} .kv dd{margin:0;font-variant-numeric:tabular-nums}
+.crew{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
+.crew li{display:grid;grid-template-columns:14px 1fr auto;align-items:center;gap:8px;font-size:15px}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot.mineur{background:var(--w-mineur)} .dot.charp{background:var(--w-charp)} .dot.inge{background:var(--w-inge)}
+.st{color:var(--mist);font-size:14px}
+.st.busy{color:var(--ember)}
+.st.gold{color:var(--gold)}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px 32px;padding-top:8px;border-top:1px solid var(--rock-700)}
+.notes h2{font-family:var(--font-display);font-weight:400;font-size:22px;margin-bottom:6px}
+.notes ul{padding-left:18px;color:var(--mist);display:flex;flex-direction:column;gap:5px;max-width:62ch}
+.notes b{color:var(--snow);font-weight:500}
+
+@media (max-width:980px){ .stage{grid-template-columns:minmax(0,1fr)} }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <p class="eyebrow">Elternos · Conclave de Lothering · prototype</p>
+    <h1>Les Nids de Cytra</h1>
+    <p class="lede">Cytra, mère de toutes les araignées, ne peut pas veiller sur chaque nid. Bandits, aventuriers et soldats de l'Empire d'Arch-Dawn montent vers la couvée. Le Conclave envoie ses nains et ses gnomes tenir la passe pendant dix vagues.</p>
+  </header>
+
+  <section class="hud" aria-label="État de la partie">
+    <div class="stat"><span class="stat-l">Or</span><span class="stat-v gold" id="hud-gold">0</span></div>
+    <div class="stat"><span class="stat-l">Œufs</span><span class="stat-v silk" id="hud-eggs">0</span></div>
+    <div class="stat"><span class="stat-l">Vague</span><span class="stat-v" id="hud-wave">0/10</span></div>
+    <p class="next" id="hud-next"></p>
+    <div class="ctrl">
+      <button class="btn primary" id="btn-wave" type="button">Lancer la vague 1</button>
+      <button class="btn" id="btn-pause" type="button">Pause</button>
+      <button class="btn" id="btn-speed" type="button">Vitesse ×1</button>
+      <button class="btn ghost" id="btn-reset" type="button">Recommencer</button>
+    </div>
+  </section>
+
+  <div class="stage">
+    <div class="board">
+      <div class="board-scroll"><canvas id="board" width="960" height="560" aria-label="Carte de la passe : deux chemins d'assaillants, des emplacements de tourelles, une mine d'or, un avant-poste et le nid de Cytra"></canvas></div>
+      <ul class="legend">
+        <li><span class="sw free"></span>Emplacement accessible</li>
+        <li><span class="sw lock"></span>Emplacement à ouvrir</li>
+        <li><span class="sw high"></span>Promontoire, portée +30 %</li>
+        <li><span class="sw rub"></span>Éboulis : mineur</li>
+        <li><span class="sw gap"></span>Gouffre : pont</li>
+        <li><span class="sw clf"></span>Falaise : échelle</li>
+        <li><span class="sw mine"></span>Mine d'or</li>
+        <li><span class="sw post"></span>Camp et avant-poste</li>
+      </ul>
+      <div class="toast" id="toast" role="status" hidden></div>
+      <div class="end" id="end" hidden></div>
+    </div>
+    <aside class="side">
+      <section class="panel" id="sel" aria-live="polite"></section>
+      <section class="panel" id="crew"></section>
+    </aside>
+  </div>
+
+  <section class="notes">
+    <div>
+      <h2>Règles de ce prototype</h2>
+      <ul>
+        <li><b>Routes fixes.</b> Les assaillants entrent par la passe Nord ou la passe Sud et marchent jusqu'au nid. Ils ignorent les ouvriers.</li>
+        <li><b>Chaque ordre se paie</b> à la commande, puis un ouvrier doit marcher jusqu'au chantier avant de travailler.</li>
+        <li><b>Spécialités strictes.</b> Mineur : déblayage et mine. Charpentier : ponts, échelles, avant-poste, balistes, mortiers. Ingénieur : bobines et améliorations.</li>
+        <li><b>Mine d'or sans fin.</b> Une fois ouverte, un mineur sans chantier y descend de lui-même : 2 or toutes les 6 secondes, deux places. Un déblayage commandé passe avant la mine.</li>
+        <li><b>Camps.</b> Les recrues arrivent toujours au camp principal. Un ouvrier sans ordre rentre aussitôt au camp le plus proche. Le site de l'avant-poste est imposé par la carte.</li>
+        <li><b>Démontage.</b> Une tourelle se démonte et rend 75 % de l'or investi, améliorations comprises. L'ouvrier qui l'a bâtie doit venir la démonter.</li>
+        <li><b>Préparation selon la menace.</b> De 24 à 40 secondes entre deux vagues, plus la vague est lourde. Lancer plus tôt rapporte 1 or par seconde gagnée.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Prévu pour la suite</h2>
+      <ul>
+        <li><b>Chasseurs.</b> Une nouvelle spécialité qui pose des tours à pièges et des tours de tireur d'élite.</li>
+        <li><b>Tours de soutien.</b> Les ingénieurs pourront bâtir des tours qui renforcent les tourelles autour d'elles.</li>
+        <li><b>Forgeron.</b> Dès qu'il y en a un dans l'équipe, un clic sur le camp principal permet d'améliorer les performances des ouvriers.</li>
+        <li><b>Grandes cartes.</b> Plusieurs camps secondaires, toujours sur des sites imposés.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+/*LOGIC-START*/
+const COLS=24, ROWS=14, MAX_CREW=8, WSPEED=3.2, START_GOLD=170, START_EGGS=12, HIGH_BONUS=1.3;
+const MINE_CAP=2, MINE_PERIOD=6, MINE_YIELD=2;
+const PATHS={A:[[-1,3],[6,3],[6,5],[17,5],[17,7],[22,7]],B:[[-1,11],[4,11],[4,9],[17,9],[17,7],[22,7]]};
+const MAP={
+  camp:[20,9], nest:[22,7], mine:[14,11], post:[4,7],
+  ledges:[[9,7],[7,11],[20,8],[14,10],[5,5],[5,6],[5,7],[5,8]],
+  slots:[[3,2],[11,4],[2,12],[10,10],[19,6],[8,7],[10,7],[13,7],[15,7,1],[8,3,1],[2,9],[6,11],[8,11]],
+  obstacles:[[9,6,'gap'],[13,8,'rubble'],[14,7,'cliff'],[7,3,'cliff'],[2,10,'rubble'],[7,10,'gap']]
+};
+const ROLES={
+  mineur:{name:'Nain mineur',short:'mineur',spec:'déblayage, mine d’or',cost:40},
+  charp:{name:'Nain charpentier',short:'charpentier',spec:'construction',cost:50},
+  inge:{name:'Gnome ingénieur',short:'ingénieur',spec:'ingénierie',cost:60}
+};
+const WORKS={
+  clear:{label:'Déblayer l’éboulis',done:'Éboulis déblayé',role:'mineur',cost:30,time:6,on:'rubble'},
+  bridge:{label:'Jeter un pont',done:'Pont terminé',role:'charp',cost:60,time:9,on:'gap'},
+  ladder:{label:'Poser une échelle',done:'Échelle posée',role:'charp',cost:45,time:6,on:'cliff'}
+};
+const SITES={
+  openmine:{label:'Ouvrir la mine',role:'mineur',cost:50,time:8},
+  outpost:{label:'Monter l’avant-poste',role:'charp',cost:70,time:10}
+};
+const TOWERS={
+  baliste:{name:'Baliste',desc:'Tir rapide sur une cible',role:'charp',cost:50,time:5,range:2.8,dmg:15,rate:1.1},
+  mortier:{name:'Mortier',desc:'Obus lent, dégâts de zone',role:'charp',cost:90,time:8,range:3.3,dmg:26,rate:0.42,splash:1.15},
+  bobine:{name:'Bobine gnome',desc:'Foudroie et ralentit 3 cibles',role:'inge',cost:80,time:7,range:2.3,dmg:5,rate:1.25,slow:0.5,slowT:1.6,targets:3}
+};
+const FOES={
+  ban:{one:'bandit',many:'bandits',hp:30,speed:1.25,gold:6,eggs:1},
+  adv:{one:'aventurier',many:'aventuriers',hp:21,speed:2.3,gold:6,eggs:1},
+  sol:{one:'soldat d’Arch-Dawn',many:'soldats d’Arch-Dawn',hp:140,speed:0.85,gold:18,eggs:2},
+  boss:{one:'capitaine d’Arch-Dawn',many:'capitaines d’Arch-Dawn',hp:1250,speed:0.6,gold:120,eggs:5}
+};
+const WAVES=[
+  [{p:'A',t:'ban',n:8,gap:1.1}],
+  [{p:'B',t:'ban',n:9,gap:1.0}],
+  [{p:'A',t:'ban',n:7,gap:1.0},{p:'B',t:'ban',n:7,gap:1.0,delay:2}],
+  [{p:'A',t:'adv',n:10,gap:0.6},{p:'B',t:'ban',n:6,gap:1.2,delay:3}],
+  [{p:'A',t:'sol',n:2,gap:3},{p:'B',t:'ban',n:10,gap:0.9}],
+  [{p:'B',t:'adv',n:12,gap:0.55},{p:'A',t:'ban',n:8,gap:0.9},{p:'A',t:'sol',n:1,delay:8}],
+  [{p:'B',t:'sol',n:3,gap:2.5},{p:'A',t:'ban',n:12,gap:0.8},{p:'A',t:'adv',n:6,gap:0.6,delay:10}],
+  [{p:'A',t:'adv',n:14,gap:0.5},{p:'B',t:'adv',n:14,gap:0.5},{p:'A',t:'sol',n:2,gap:3,delay:6},{p:'B',t:'sol',n:2,gap:3,delay:6}],
+  [{p:'A',t:'sol',n:3,gap:2.4},{p:'B',t:'sol',n:3,gap:2.4},{p:'A',t:'ban',n:10,gap:0.7,delay:4},{p:'B',t:'ban',n:10,gap:0.7,delay:4}],
+  [{p:'A',t:'boss',n:1},{p:'B',t:'sol',n:5,gap:2},{p:'A',t:'ban',n:12,gap:0.7,delay:3},{p:'B',t:'adv',n:12,gap:0.5,delay:8}]
+];
+const HP_SCALE=0.2;
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+// Menace d'une vague : total des points de vie qu'elle amène. Elle fixe le temps de préparation.
+const THREAT=WAVES.map((def,i)=>def.reduce((s,g)=>s+g.n*FOES[g.t].hp*(1+HP_SCALE*i),0));
+const THREAT_MAX=Math.max.apply(null,THREAT);
+function threatLevel(i){ return Math.max(1,Math.ceil(5*Math.sqrt(THREAT[i]/THREAT_MAX))); }
+function prepTime(i){ return Math.round(20+20*Math.sqrt(THREAT[i]/THREAT_MAX)); }
+
+function pathInfo(pts){
+  const segs=[]; let total=0;
+  for(let i=0;i<pts.length-1;i++){
+    const [x1,y1]=pts[i],[x2,y2]=pts[i+1];
+    const len=Math.abs(x2-x1)+Math.abs(y2-y1);
+    segs.push({x1,y1,x2,y2,len,start:total}); total+=len;
+  }
+  return {segs,total};
+}
+const PINFO={A:pathInfo(PATHS.A),B:pathInfo(PATHS.B)};
+function posAt(p,d){
+  const segs=PINFO[p].segs;
+  if(d<=0) return [segs[0].x1,segs[0].y1];
+  for(const s of segs){
+    if(d<=s.start+s.len){ const f=(d-s.start)/s.len; return [s.x1+(s.x2-s.x1)*f,s.y1+(s.y2-s.y1)*f]; }
+  }
+  const l=segs[segs.length-1]; return [l.x2,l.y2];
+}
+function towerStats(type,lvl,high){
+  const d=TOWERS[type];
+  return {range:d.range*(high?HIGH_BONUS:1)*(1+0.08*(lvl-1)), dmg:d.dmg*(1+0.6*(lvl-1)), rate:d.rate};
+}
+function upgradeCost(type,lvl){ return Math.round(TOWERS[type].cost*0.7*lvl/5)*5; }
+// Démontage : rend 75 % de tout l'or investi dans la tourelle, améliorations comprises.
+const REFUND=0.75, DISMANTLE_TIME=3;
+function refundOf(tw){ return Math.round(tw.invested*REFUND); }
+function waveSummary(i){
+  const def=WAVES[i]; if(!def) return '';
+  const by={A:{},B:{}};
+  def.forEach(g=>{ by[g.p][g.t]=(by[g.p][g.t]||0)+g.n; });
+  const parts=[];
+  for(const p of ['A','B']){
+    const items=Object.entries(by[p]).map(([t,n])=>n+' '+(n>1?FOES[t].many:FOES[t].one));
+    if(items.length) parts.push((p==='A'?'Nord : ':'Sud : ')+items.join(', '));
+  }
+  return parts.join(' · ');
+}
+function wavePaths(i){ const def=WAVES[i]; const s={A:false,B:false}; if(def) def.forEach(g=>{s[g.p]=true;}); return s; }
+
+function createGame(){
+  const tiles=[];
+  for(let y=0;y<ROWS;y++){ tiles.push([]); for(let x=0;x<COLS;x++) tiles[y].push({t:'rock'}); }
+  for(const p of Object.values(PATHS)){
+    for(let i=0;i<p.length-1;i++){
+      let [x,y]=p[i]; const [x2,y2]=p[i+1];
+      const dx=Math.sign(x2-x), dy=Math.sign(y2-y);
+      for(;;){
+        if(x>=0&&x<COLS&&y>=0&&y<ROWS) tiles[y][x].t='road';
+        if(x===x2&&y===y2) break;
+        x+=dx; y+=dy;
+      }
+    }
+  }
+  MAP.ledges.forEach(([x,y])=>{ tiles[y][x]={t:'ledge'}; });
+  MAP.slots.forEach(([x,y,h])=>{ tiles[y][x]={t:'slot',high:!!h,tower:null}; });
+  MAP.obstacles.forEach(([x,y,k])=>{ tiles[y][x]={t:'obst',kind:k,done:false}; });
+  tiles[MAP.camp[1]][MAP.camp[0]]={t:'camp'};
+  tiles[MAP.mine[1]][MAP.mine[0]]={t:'mine',open:false};
+  tiles[MAP.post[1]][MAP.post[0]]={t:'post',built:false};
+  tiles[MAP.nest[1]][MAP.nest[0]].nest=true;
+
+  const S={gold:START_GOLD,eggs:START_EGGS,wave:0,phase:'prep',countdown:null,time:0,waveT:0,
+    tiles,workers:[],jobs:[],towers:[],enemies:[],shots:[],fx:[],spawnQ:[],events:[],reach:new Set(),uid:0,kills:0,spent:0,mined:0,refunded:0};
+
+  const key=(x,y)=>y*COLS+x;
+  function T(x,y){ return (x>=0&&y>=0&&x<COLS&&y<ROWS)?tiles[y][x]:null; }
+  function isCamp(t){ return !!t&&(t.t==='camp'||(t.t==='post'&&t.built)); }
+  function walkable(t){ return !!t&&(t.t==='road'||t.t==='ledge'||t.t==='slot'||isCamp(t)||(t.t==='obst'&&t.done)); }
+  function bfs(sx,sy,goal,pass){
+    pass=pass||walkable;
+    const start=key(sx,sy), prev=new Map([[start,-1]]), q=[[sx,sy]];
+    let head=0;
+    while(head<q.length){
+      const [x,y]=q[head++];
+      if(goal(x,y)){
+        const path=[]; let k=key(x,y);
+        while(k!==start){ path.push([k%COLS,Math.floor(k/COLS)]); k=prev.get(k); }
+        return path.reverse();
+      }
+      for(const [dx,dy] of DIRS){
+        const nx=x+dx, ny=y+dy, t=T(nx,ny);
+        if(!pass(t)) continue;
+        const k=key(nx,ny); if(prev.has(k)) continue;
+        prev.set(k,key(x,y)); q.push([nx,ny]);
+      }
+    }
+    return null;
+  }
+  function computeReach(){
+    const r=new Set(), q=[[MAP.camp[0],MAP.camp[1]]]; r.add(key(q[0][0],q[0][1]));
+    let head=0;
+    while(head<q.length){
+      const [x,y]=q[head++];
+      for(const [dx,dy] of DIRS){
+        const nx=x+dx, ny=y+dy; if(!walkable(T(nx,ny))) continue;
+        const k=key(nx,ny); if(r.has(k)) continue; r.add(k); q.push([nx,ny]);
+      }
+    }
+    S.reach=r;
+  }
+  function isReach(x,y){ return S.reach.has(key(x,y)); }
+  function adjReach(x,y){ return DIRS.some(([dx,dy])=>walkable(T(x+dx,y+dy))&&isReach(x+dx,y+dy)); }
+  function reachSlots(){ let n=0; for(const [x,y] of MAP.slots) if(isReach(x,y)) n++; return n; }
+  function jobAt(x,y){ return S.jobs.find(j=>j.x===x&&j.y===y)||null; }
+  function minersAtMine(){ return S.workers.filter(w=>w.state==='tomine'||w.state==='mining').length; }
+  // Obstacles à ouvrir, dans l'ordre, pour atteindre une case depuis la zone accessible.
+  function accessChain(x,y){
+    if(isReach(x,y)) return [];
+    const p=bfs(x,y,(a,b)=>isReach(a,b),t=>!!t&&(walkable(t)||t.t==='obst'));
+    if(!p) return [];
+    return p.filter(([a,b])=>{ const t=T(a,b); return t.t==='obst'&&!t.done; }).reverse().map(([a,b])=>({x:a,y:b,kind:T(a,b).kind}));
+  }
+  function spec(x,y,act){
+    const t=T(x,y); if(!t) return null;
+    if(WORKS[act]){
+      if(t.t!=='obst'||t.kind!==WORKS[act].on||t.done) return null;
+      const w=WORKS[act]; return {kind:act,role:w.role,cost:w.cost,time:w.time,label:w.label};
+    }
+    if(act==='openmine'){ if(t.t!=='mine'||t.open) return null; return Object.assign({kind:act},SITES[act]); }
+    if(act==='outpost'){ if(t.t!=='post'||t.built) return null; return Object.assign({kind:act},SITES[act]); }
+    if(act.indexOf('build:')===0){
+      const ty=act.slice(6), d=TOWERS[ty];
+      if(!d||t.t!=='slot'||t.tower) return null;
+      return {kind:'build',tower:ty,role:d.role,cost:d.cost,time:d.time,label:d.name};
+    }
+    if(act==='upgrade'){
+      if(t.t!=='slot'||!t.tower||t.tower.lvl>=3) return null;
+      return {kind:'upgrade',role:'inge',cost:upgradeCost(t.tower.type,t.tower.lvl),time:5,label:'Amélioration'};
+    }
+    if(act==='dismantle'){
+      if(t.t!=='slot'||!t.tower) return null;
+      return {kind:'dismantle',role:TOWERS[t.tower.type].role,cost:0,time:DISMANTLE_TIME,label:'Démontage',refund:refundOf(t.tower)};
+    }
+    return null;
+  }
+  function check(x,y,act){
+    const sp=spec(x,y,act);
+    if(!sp) return {ok:false,why:'Action impossible ici'};
+    if(S.phase==='won'||S.phase==='lost') return {ok:false,why:'La partie est terminée',sp};
+    if(jobAt(x,y)) return {ok:false,why:'Un chantier est déjà en cours ici',sp};
+    const t=T(x,y);
+    const reachable=t.t==='slot'?isReach(x,y):adjReach(x,y);
+    if(!reachable) return {ok:false,why:'Inaccessible : ouvre d’abord un accès',sp};
+    if(!S.workers.some(w=>w.role===sp.role)) return {ok:false,why:'Il faut un '+ROLES[sp.role].short+' dans l’équipe',sp};
+    if(S.gold<sp.cost) return {ok:false,why:'Il manque '+(sp.cost-S.gold)+' or',sp};
+    return {ok:true,sp};
+  }
+  function order(x,y,act){
+    const c=check(x,y,act); if(!c.ok) return c;
+    const sp=c.sp; S.gold-=sp.cost; S.spent+=sp.cost;
+    const j={id:++S.uid,kind:sp.kind,tower:sp.tower||null,x,y,role:sp.role,cost:sp.cost,time:sp.time,prog:0,worker:null,label:sp.label};
+    S.jobs.push(j); manage();
+    return {ok:true,sp,job:j,waiting:!j.worker};
+  }
+  function checkRecruit(role){
+    const r=ROLES[role];
+    if(S.phase==='won'||S.phase==='lost') return {ok:false,why:'La partie est terminée'};
+    if(S.workers.length>=MAX_CREW) return {ok:false,why:'Équipe complète ('+MAX_CREW+')'};
+    if(S.gold<r.cost) return {ok:false,why:'Il manque '+(r.cost-S.gold)+' or'};
+    return {ok:true};
+  }
+  function addWorker(role){ S.workers.push({id:++S.uid,role,x:MAP.camp[0],y:MAP.camp[1],path:[],job:null,state:'idle',mineT:0}); }
+  function recruit(role){
+    const c=checkRecruit(role); if(!c.ok) return c;
+    S.gold-=ROLES[role].cost; S.spent+=ROLES[role].cost; addWorker(role); manage();
+    return {ok:true};
+  }
+  const ARRIVE={move:'work',back:'idle',tomine:'mining'};
+  const FREE={idle:1,back:1,tomine:1,mining:1};
+  // Met un ouvrier en marche. S'il est entre deux cases, il rejoint d'abord le centre de la sienne.
+  function go(w,path,state){
+    const rx=Math.round(w.x), ry=Math.round(w.y);
+    if(Math.abs(w.x-rx)+Math.abs(w.y-ry)>0.01) path=[[rx,ry]].concat(path);
+    w.path=path; w.mineT=0; w.state=path.length?state:ARRIVE[state];
+  }
+  function pathFrom(w,goal){ return bfs(Math.round(w.x),Math.round(w.y),goal); }
+  function manage(){
+    // 1. Les chantiers en attente prennent l'ouvrier libre le plus proche. Un mineur à la mine n'est rappelé qu'en dernier.
+    for(const j of S.jobs){
+      if(j.worker) continue;
+      let best=null,bp=null,bc=Infinity;
+      for(const w of S.workers){
+        if(!FREE[w.state]||w.role!==j.role) continue;
+        const p=pathFrom(w,(x,y)=>Math.abs(x-j.x)+Math.abs(y-j.y)===1);
+        if(!p) continue;
+        const c=p.length+(w.state==='mining'||w.state==='tomine'?1000:0);
+        if(c<bc){ best=w; bp=p; bc=c; }
+      }
+      if(best){ best.job=j; j.worker=best; go(best,bp,'move'); }
+    }
+    // 2. Sans chantier : un mineur descend à la mine s'il reste une place, les autres rentrent au camp le plus proche.
+    const mine=T(MAP.mine[0],MAP.mine[1]);
+    for(const w of S.workers){
+      if(w.state!=='idle'&&w.state!=='back') continue;
+      if(w.role==='mineur'&&mine.open&&minersAtMine()<MINE_CAP){
+        const p=pathFrom(w,(x,y)=>Math.abs(x-MAP.mine[0])+Math.abs(y-MAP.mine[1])===1);
+        if(p){ go(w,p,'tomine'); continue; }
+      }
+      if(w.state==='idle'&&!isCamp(T(Math.round(w.x),Math.round(w.y)))){
+        const p=pathFrom(w,(x,y)=>isCamp(T(x,y)));
+        if(p) go(w,p,'back');
+      }
+    }
+  }
+  function finish(j,w){
+    S.jobs.splice(S.jobs.indexOf(j),1); w.job=null; w.state='idle';
+    const t=T(j.x,j.y);
+    if(j.kind==='build'){
+      t.tower={type:j.tower,lvl:1,cd:0,x:j.x,y:j.y,high:t.high,ang:0,invested:j.cost};
+      S.towers.push(t.tower);
+      S.events.push({type:'built',text:TOWERS[j.tower].name+' en service'});
+    }else if(j.kind==='upgrade'){
+      t.tower.lvl++; t.tower.invested+=j.cost;
+      S.events.push({type:'built',text:TOWERS[t.tower.type].name+' au niveau '+t.tower.lvl});
+    }else if(j.kind==='dismantle'){
+      const back=refundOf(t.tower), name=TOWERS[t.tower.type].name;
+      S.towers.splice(S.towers.indexOf(t.tower),1); t.tower=null; S.gold+=back; S.refunded+=back;
+      S.events.push({type:'built',text:'Démontage terminé ('+name+') : +'+back+' or'});
+    }else if(j.kind==='openmine'){
+      t.open=true;
+      S.events.push({type:'built',text:'Mine ouverte : les mineurs sans chantier y descendent'});
+    }else if(j.kind==='outpost'){
+      t.built=true; computeReach();
+      S.events.push({type:'built',text:'Avant-poste monté : les ouvriers rentrent au camp le plus proche'});
+    }else{
+      const before=reachSlots(); t.done=true; computeReach();
+      const opened=reachSlots()-before;
+      S.events.push({type:'access',text:WORKS[j.kind].done+(opened?' : '+opened+' emplacement'+(opened>1?'s':'')+' accessible'+(opened>1?'s':''):'')});
+    }
+  }
+  function startWave(auto){
+    if(S.phase!=='prep'||S.wave>=WAVES.length) return {ok:false};
+    let bonus=0;
+    if(!auto&&S.countdown!=null){ bonus=Math.floor(S.countdown); S.gold+=bonus; }
+    const def=WAVES[S.wave]; S.wave++;
+    const q=[];
+    for(const g of def) for(let i=0;i<g.n;i++) q.push({at:(g.delay||0)+i*(g.gap||1),t:g.t,p:g.p});
+    q.sort((a,b)=>a.at-b.at);
+    S.spawnQ=q; S.waveT=0; S.phase='wave'; S.countdown=null;
+    return {ok:true,bonus};
+  }
+  function spawn(s){
+    const f=FOES[s.t], hp=Math.round(f.hp*(1+HP_SCALE*(S.wave-1)));
+    const [x,y]=posAt(s.p,0);
+    S.enemies.push({id:++S.uid,type:s.t,p:s.p,d:0,x,y,hp,maxhp:hp,speed:f.speed,gold:f.gold,eggs:f.eggs,slowUntil:0,dead:false});
+  }
+  function hit(e,dmg){
+    if(e.dead) return;
+    e.hp-=dmg;
+    if(e.hp<=0){ e.dead=true; S.gold+=e.gold; S.kills++; S.fx.push({k:'coin',x:e.x,y:e.y,t:0,dur:0.7,n:e.gold}); }
+  }
+  function step(dt){
+    if(S.phase==='won'||S.phase==='lost') return;
+    S.time+=dt;
+    if(S.phase==='prep'&&S.countdown!=null){ S.countdown-=dt; if(S.countdown<=0) startWave(true); }
+    if(S.phase==='wave'){ S.waveT+=dt; while(S.spawnQ.length&&S.spawnQ[0].at<=S.waveT) spawn(S.spawnQ.shift()); }
+    for(const e of S.enemies){
+      e.d+=e.speed*(S.time<e.slowUntil?TOWERS.bobine.slow:1)*dt;
+      if(e.d>=PINFO[e.p].total){
+        e.dead=true; S.eggs=Math.max(0,S.eggs-e.eggs);
+        S.fx.push({k:'leak',x:MAP.nest[0],y:MAP.nest[1],t:0,dur:0.6});
+        S.events.push({type:'leak',text:'Un '+FOES[e.type].one+' a atteint le nid : −'+e.eggs+' œuf'+(e.eggs>1?'s':'')});
+      }else{ const p=posAt(e.p,e.d); e.x=p[0]; e.y=p[1]; }
+    }
+    for(const tw of S.towers){
+      tw.cd-=dt; if(tw.cd>0) continue;
+      const st=towerStats(tw.type,tw.lvl,tw.high), d=TOWERS[tw.type];
+      const inR=S.enemies.filter(e=>!e.dead&&e.x>=-0.4&&Math.hypot(e.x-tw.x,e.y-tw.y)<=st.range);
+      if(!inR.length){ tw.cd=0; continue; }
+      inR.sort((a,b)=>b.d-a.d);
+      const e=inR[0]; tw.ang=Math.atan2(e.y-tw.y,e.x-tw.x); tw.cd=1/st.rate;
+      if(tw.type==='baliste'){
+        S.shots.push({k:'bolt',x:tw.x,y:tw.y,target:e,dmg:st.dmg,speed:14,ang:tw.ang});
+      }else if(tw.type==='mortier'){
+        const sp=e.speed*(S.time<e.slowUntil?TOWERS.bobine.slow:1);
+        const tp=posAt(e.p,Math.min(PINFO[e.p].total,e.d+sp*0.7));
+        S.shots.push({k:'shell',sx:tw.x,sy:tw.y,tx:tp[0],ty:tp[1],t:0,dur:0.7,dmg:st.dmg,splash:d.splash});
+      }else{
+        for(const v of inR.slice(0,d.targets)){
+          v.slowUntil=S.time+d.slowT;
+          S.fx.push({k:'zap',x1:tw.x,y1:tw.y,x2:v.x,y2:v.y,t:0,dur:0.16});
+          hit(v,st.dmg);
+        }
+      }
+    }
+    for(const s of S.shots){
+      if(s.k==='bolt'){
+        const e=s.target; if(e.dead){ s.done=true; continue; }
+        const dx=e.x-s.x, dy=e.y-s.y, dist=Math.hypot(dx,dy), mv=s.speed*dt;
+        s.ang=Math.atan2(dy,dx);
+        if(dist<=mv){ hit(e,s.dmg); s.done=true; } else { s.x+=dx/dist*mv; s.y+=dy/dist*mv; }
+      }else{
+        s.t+=dt;
+        if(s.t>=s.dur){
+          s.done=true;
+          for(const e of S.enemies) if(!e.dead&&Math.hypot(e.x-s.tx,e.y-s.ty)<=s.splash) hit(e,s.dmg);
+          S.fx.push({k:'boom',x:s.tx,y:s.ty,t:0,dur:0.35,r:s.splash});
+        }
+      }
+    }
+    S.shots=S.shots.filter(s=>!s.done);
+    S.enemies=S.enemies.filter(e=>!e.dead);
+    for(const f of S.fx) f.t+=dt;
+    S.fx=S.fx.filter(f=>f.t<f.dur);
+    for(const w of S.workers){
+      if(ARRIVE[w.state]){
+        let rem=WSPEED*dt;
+        while(rem>0&&w.path.length){
+          const [tx,ty]=w.path[0], dx=tx-w.x, dy=ty-w.y, dist=Math.hypot(dx,dy);
+          if(dist<=rem){ w.x=tx; w.y=ty; w.path.shift(); rem-=dist; }
+          else { w.x+=dx/dist*rem; w.y+=dy/dist*rem; rem=0; }
+        }
+        if(!w.path.length){ w.state=ARRIVE[w.state]; w.mineT=0; }
+      }else if(w.state==='work'){
+        const j=w.job; j.prog+=dt; if(j.prog>=j.time) finish(j,w);
+      }else if(w.state==='mining'){
+        w.mineT+=dt;
+        if(w.mineT>=MINE_PERIOD){
+          w.mineT-=MINE_PERIOD; S.gold+=MINE_YIELD; S.mined+=MINE_YIELD;
+          S.fx.push({k:'coin',x:MAP.mine[0],y:MAP.mine[1],t:0,dur:0.9,n:MINE_YIELD});
+        }
+      }
+    }
+    manage();
+    if(S.eggs<=0){ S.phase='lost'; return; }
+    if(S.phase==='wave'&&!S.spawnQ.length&&!S.enemies.length){
+      const bonus=25+6*S.wave; S.gold+=bonus;
+      if(S.wave>=WAVES.length){ S.phase='won'; }
+      else { S.phase='prep'; S.countdown=prepTime(S.wave); S.events.push({type:'wave',text:'Vague '+S.wave+' repoussée : +'+bonus+' or'}); }
+    }
+  }
+  computeReach();
+  addWorker('charp'); addWorker('mineur');
+  return {S,T,walkable,isCamp,isReach,adjReach,jobAt,minersAtMine,accessChain,spec,check,order,checkRecruit,recruit,startWave,step};
+}
+/*LOGIC-END*/
+
+(function(){
+  const TS=40, W=COLS*TS, H=ROWS*TS;
+  const cv=document.getElementById('board'), ctx=cv.getContext('2d');
+  const $=id=>document.getElementById(id);
+  const el={gold:$('hud-gold'),eggs:$('hud-eggs'),wave:$('hud-wave'),next:$('hud-next'),btnWave:$('btn-wave'),btnPause:$('btn-pause'),btnSpeed:$('btn-speed'),btnReset:$('btn-reset'),sel:$('sel'),crew:$('crew'),toast:$('toast'),end:$('end')};
+  const WCOL={mineur:'#e3b341',charp:'#d17f45',inge:'#5cc4cc'};
+  const OBST_NAME={rubble:'Éboulis',gap:'Gouffre',cliff:'Falaise'};
+  const OBST_ACT={rubble:'clear',gap:'bridge',cliff:'ladder'};
+  const OBST_DESC={
+    rubble:'Des blocs bouchent le passage. Un mineur peut les dégager.',
+    gap:'Une faille coupe la corniche. Un charpentier peut y jeter un pont.',
+    cliff:'Une paroi mène à un promontoire. Un charpentier peut y poser une échelle.'
+  };
+  const OBST_DONE={rubble:'Passage dégagé',gap:'Pont',cliff:'Échelle'};
+  const WSTATE={idle:['Au camp',''],move:['En route','busy'],work:['Au travail','busy'],back:['Rentre au camp',''],tomine:['Vers la mine','gold'],mining:['À la mine','gold']};
+  let G=createGame();
+  const ui={sel:null,hover:null,preview:null,paused:false,speed:1,resetArmed:0,toastT:0};
+
+  function resize(){
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  const px=v=>v*TS+TS/2;
+  function hash(x,y){ const n=Math.sin(x*127.1+y*311.7)*43758.5453; return n-Math.floor(n); }
+  function circle(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); }
+  function poly(pts){ ctx.beginPath(); ctx.moveTo(pts[0],pts[1]); for(let i=2;i<pts.length;i+=2) ctx.lineTo(pts[i],pts[i+1]); ctx.closePath(); }
+  function label(text,x,y,align,size){
+    ctx.font=(size||15)+'px "IM Fell English SC", Georgia, serif'; ctx.textAlign=align||'left'; ctx.textBaseline='middle';
+    ctx.lineWidth=4; ctx.strokeStyle='rgba(16,20,27,.85)'; ctx.lineJoin='round'; ctx.strokeText(text,x,y);
+    ctx.fillStyle='#e9eef4'; ctx.fillText(text,x,y);
+  }
+  function isFloor(t){ return !!t&&t.t!=='rock'&&t.t!=='mine'; }
+  function pulse(X,Y,now){
+    ctx.strokeStyle='rgba(240,160,75,'+(0.55+0.35*Math.sin(now*3))+')'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeRect(X+2,Y+2,TS-4,TS-4); ctx.setLineDash([]);
+  }
+  function hut(cx,cy,now,small){
+    const s=small?0.82:1;
+    ctx.fillStyle='#5a4733'; ctx.fillRect(cx-13*s,cy-6*s,26*s,18*s);
+    ctx.fillStyle=small?'#6f7b3c':'#8a5a2c'; poly([cx-16*s,cy-6*s,cx,cy-18*s,cx+16*s,cy-6*s]); ctx.fill();
+    ctx.fillStyle='rgba(255,154,60,'+(0.75+0.2*Math.sin(now*5))+')'; ctx.fillRect(cx-4*s,cy+1*s,8*s,11*s);
+    ctx.strokeStyle='#1a1410'; ctx.lineWidth=1.5; ctx.strokeRect(cx-13*s,cy-6*s,26*s,18*s);
+  }
+
+  function drawTerrain(now){
+    const S=G.S;
+    ctx.fillStyle='#161b24'; ctx.fillRect(0,0,W,H);
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      const t=S.tiles[y][x], X=x*TS, Y=y*TS;
+      if(t.t==='rock'){
+        const h1=hash(x,y), h2=hash(x+17,y+5), h3=hash(x+3,y+29);
+        ctx.fillStyle=h1>0.5?'#1c222c':'#191f28'; ctx.fillRect(X,Y,TS,TS);
+        const ax=X+TS*(0.34+0.32*h2), ay=Y+TS*(0.1+0.2*h3), by=Y+TS, bl=X+1, br=X+TS-1, mid=ax+TS*0.1;
+        ctx.fillStyle='#4a5567'; poly([bl,by,ax,ay,mid,by]); ctx.fill();
+        ctx.fillStyle='#333c4a'; poly([ax,ay,br,by,mid,by]); ctx.fill();
+        const k=0.34+0.1*h1;
+        ctx.fillStyle='#dde5ee';
+        poly([ax,ay, ax+(bl-ax)*k,ay+(by-ay)*k, ax-3,ay+(by-ay)*k*0.72, ax+2,ay+(by-ay)*k*1.05, ax+(br-ax)*k*0.8,ay+(by-ay)*k*0.8]); ctx.fill();
+      }else if(t.t==='road'){
+        ctx.fillStyle='#6d6351'; ctx.fillRect(X,Y,TS,TS);
+        ctx.fillStyle='#82775f';
+        ctx.fillRect(X+6+hash(x,y)*24,Y+8+hash(y,x)*22,3,2);
+        ctx.fillRect(X+4+hash(x+9,y)*28,Y+5+hash(y+9,x)*28,2,2);
+      }else if(t.t==='mine'){
+        ctx.fillStyle='#262d39'; ctx.fillRect(X,Y,TS,TS);
+      }else{
+        ctx.fillStyle='#3f4858'; ctx.fillRect(X,Y,TS,TS);
+      }
+    }
+    // Arêtes : ombre là où le sol touche la roche.
+    ctx.strokeStyle='rgba(8,10,14,.6)'; ctx.lineWidth=2;
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      if(!isFloor(S.tiles[y][x])) continue;
+      const X=x*TS, Y=y*TS;
+      ctx.beginPath();
+      if(!isFloor(G.T(x,y-1))&&y>0){ ctx.moveTo(X,Y+1); ctx.lineTo(X+TS,Y+1); }
+      if(!isFloor(G.T(x,y+1))&&y<ROWS-1){ ctx.moveTo(X,Y+TS-1); ctx.lineTo(X+TS,Y+TS-1); }
+      if(!isFloor(G.T(x-1,y))&&x>0){ ctx.moveTo(X+1,Y); ctx.lineTo(X+1,Y+TS); }
+      if(!isFloor(G.T(x+1,y))&&x<COLS-1){ ctx.moveTo(X+TS-1,Y); ctx.lineTo(X+TS-1,Y+TS); }
+      ctx.stroke();
+    }
+    // Obstacles
+    for(const [x,y] of MAP.obstacles){
+      const t=G.T(x,y), X=x*TS, Y=y*TS, cx=px(x), cy=px(y);
+      const horiz=isFloor(G.T(x-1,y))&&isFloor(G.T(x+1,y));
+      if(t.kind==='rubble'){
+        if(!t.done){
+          const rocks=[[-9,6,8],[7,8,7],[-1,-4,9],[10,-5,6],[-11,-7,5]];
+          rocks.forEach((r,i)=>{ ctx.fillStyle=i%2?'#8a8072':'#766d61'; circle(cx+r[0],cy+r[1],r[2]); ctx.fill(); ctx.strokeStyle='#2a2620'; ctx.lineWidth=1.5; ctx.stroke(); });
+        }else{
+          ctx.fillStyle='#766d61'; circle(X+7,Y+33,3); ctx.fill(); circle(X+33,Y+8,2.5); ctx.fill();
+        }
+      }else if(t.kind==='gap'){
+        ctx.fillStyle='#05070a'; ctx.fillRect(X,Y,TS,TS);
+        ctx.fillStyle='#1d2530';
+        if(horiz){ poly([X,Y,X+TS,Y,X+TS-8,Y+5,X+20,Y+3,X+8,Y+6]); ctx.fill(); poly([X,Y+TS,X+TS,Y+TS,X+30,Y+TS-5,X+14,Y+TS-3]); ctx.fill(); }
+        else { poly([X,Y,X,Y+TS,X+5,Y+30,X+3,Y+18,X+6,Y+8]); ctx.fill(); poly([X+TS,Y,X+TS,Y+TS,X+TS-5,Y+26,X+TS-3,Y+12]); ctx.fill(); }
+        if(t.done){
+          ctx.fillStyle='#a67a45'; ctx.strokeStyle='#4a3218'; ctx.lineWidth=1;
+          for(let i=0;i<5;i++){
+            if(horiz){ ctx.fillRect(X+i*8+1,Y+9,6,22); ctx.strokeRect(X+i*8+1,Y+9,6,22); }
+            else { ctx.fillRect(X+9,Y+i*8+1,22,6); ctx.strokeRect(X+9,Y+i*8+1,22,6); }
+          }
+        }
+      }else{
+        ctx.fillStyle='#2b3441'; ctx.fillRect(X,Y,TS,TS);
+        ctx.strokeStyle='#566173'; ctx.lineWidth=2;
+        for(let i=1;i<5;i++){ ctx.beginPath(); if(horiz){ ctx.moveTo(X+i*8,Y+3); ctx.lineTo(X+i*8-3,Y+TS-3); } else { ctx.moveTo(X+3,Y+i*8); ctx.lineTo(X+TS-3,Y+i*8-3); } ctx.stroke(); }
+        if(t.done){
+          ctx.strokeStyle='#d6a868'; ctx.lineWidth=3; ctx.beginPath();
+          if(horiz){ ctx.moveTo(X+2,Y+13); ctx.lineTo(X+TS-2,Y+13); ctx.moveTo(X+2,Y+27); ctx.lineTo(X+TS-2,Y+27); for(let i=0;i<5;i++){ ctx.moveTo(X+5+i*8,Y+13); ctx.lineTo(X+5+i*8,Y+27); } }
+          else { ctx.moveTo(X+13,Y+2); ctx.lineTo(X+13,Y+TS-2); ctx.moveTo(X+27,Y+2); ctx.lineTo(X+27,Y+TS-2); for(let i=0;i<5;i++){ ctx.moveTo(X+13,Y+5+i*8); ctx.lineTo(X+27,Y+5+i*8); } }
+          ctx.stroke();
+        }
+      }
+      if(!t.done&&G.adjReach(x,y)&&!G.jobAt(x,y)) pulse(X,Y,now);
+    }
+    // Mine d'or : une galerie dans la roche, au bout d'une corniche.
+    {
+      const mx=MAP.mine[0], my=MAP.mine[1], t=G.T(mx,my), X=mx*TS, Y=my*TS, cx=px(mx);
+      ctx.fillStyle='#05070a'; ctx.beginPath(); ctx.moveTo(X+7,Y+TS-3); ctx.lineTo(X+7,Y+17); ctx.arc(cx,Y+17,13,Math.PI,0); ctx.lineTo(X+33,Y+TS-3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#a67a45'; ctx.lineWidth=3; ctx.stroke();
+      if(t.open){
+        ctx.fillStyle='rgba(242,207,99,'+(0.7+0.3*Math.sin(now*4))+')';
+        for(const g of [[-6,8,2.4],[5,3,2],[1,12,2.8],[8,11,1.8],[-3,2,1.6]]){ circle(cx+g[0],Y+17+g[1],g[2]); ctx.fill(); }
+      }else{
+        ctx.strokeStyle='#7c5a32'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(X+8,Y+12); ctx.lineTo(X+32,Y+34); ctx.moveTo(X+32,Y+12); ctx.lineTo(X+8,Y+34); ctx.stroke();
+        if(!G.jobAt(mx,my)) pulse(X,Y,now);
+      }
+    }
+    // Emplacements
+    for(const [x,y] of MAP.slots){
+      const t=G.T(x,y), cx=px(x), cy=px(y), ok=G.isReach(x,y);
+      ctx.fillStyle=t.high?'#667286':'#505b6d'; circle(cx,cy,16); ctx.fill();
+      ctx.strokeStyle=t.high?'#e9eef4':'#232a35'; ctx.lineWidth=t.high?2:1.5; ctx.stroke();
+      if(!t.tower&&!G.jobAt(x,y)){
+        ctx.setLineDash([4,4]); ctx.lineWidth=2;
+        ctx.strokeStyle=ok?'#f0a04b':'#9ca8b8'; circle(cx,cy,11); ctx.stroke(); ctx.setLineDash([]);
+        if(ok){ ctx.beginPath(); ctx.moveTo(cx-5,cy); ctx.lineTo(cx+5,cy); ctx.moveTo(cx,cy-5); ctx.lineTo(cx,cy+5); ctx.stroke(); }
+        else {
+          ctx.fillStyle='#9ca8b8'; ctx.fillRect(cx-4.5,cy-1,9,7);
+          ctx.beginPath(); ctx.arc(cx,cy-1,3,Math.PI,0); ctx.stroke();
+        }
+      }
+    }
+    // Camp du Conclave et avant-poste
+    hut(px(MAP.camp[0]),px(MAP.camp[1]),now,false);
+    {
+      const qx=MAP.post[0], qy=MAP.post[1], t=G.T(qx,qy);
+      if(t.built) hut(px(qx),px(qy),now,true);
+      else {
+        ctx.globalAlpha=0.35; hut(px(qx),px(qy),0,true); ctx.globalAlpha=1;
+        if(!G.jobAt(qx,qy)) pulse(qx*TS,qy*TS,now);
+      }
+    }
+    // Nid de Cytra
+    {
+      const cx=px(MAP.nest[0]), cy=px(MAP.nest[1]), R=50;
+      ctx.fillStyle='rgba(187,168,234,.13)'; circle(cx,cy,R); ctx.fill();
+      ctx.strokeStyle='rgba(233,238,244,.45)'; ctx.lineWidth=1;
+      for(let i=0;i<10;i++){ const a=i/10*Math.PI*2+0.2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R); ctx.stroke(); }
+      for(const r of [16,29,41,R]){ circle(cx,cy,r); ctx.stroke(); }
+      for(let i=0;i<S.eggs;i++){
+        const a=i*2.39996, r=5+7.2*Math.sqrt(i);
+        const ex=cx+Math.cos(a)*r, ey=cy+Math.sin(a)*r;
+        ctx.fillStyle='#f3eedd'; ctx.beginPath(); ctx.ellipse(ex,ey,4.2,5.6,0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#6c5aa0'; ctx.lineWidth=1; ctx.stroke();
+      }
+      // Les huit yeux de Cytra, dans l'ombre derrière le nid.
+      const eyes=[[-5,-9,3],[-5,9,3],[-10,-24,2.4],[-10,24,2.4],[-3,-37,2],[-3,37,2],[-15,-4,1.8],[-15,4,1.8]];
+      for(const e of eyes){
+        ctx.fillStyle='rgba(187,168,234,'+(0.55+0.3*Math.sin(now*1.3+e[1]))+')';
+        circle(W+e[0],cy+e[1],e[2]); ctx.fill();
+      }
+    }
+    label('Passe Nord',6,4*TS+14,'left'); label('Passe Sud',6,10*TS+26,'left',14);
+    label('Camp du Conclave',px(MAP.camp[0])-4,10*TS+20,'center',14);
+    label('Nid de Cytra',px(MAP.nest[0])-6,5*TS+22,'center');
+    label('Mine d’or',px(MAP.mine[0]),12*TS+14,'center',14);
+    label('Avant-poste',MAP.post[0]*TS-6,px(MAP.post[1]),'right',14);
+    if(S.phase==='prep'&&S.wave<WAVES.length){
+      const wp=wavePaths(S.wave), a=0.5+0.5*Math.sin(now*4);
+      ctx.fillStyle='rgba(226,105,91,'+(0.5+0.5*a)+')';
+      for(const p of ['A','B']) if(wp[p]){
+        const y=px(PATHS[p][0][1]), x=10+a*6;
+        for(let i=0;i<2;i++){ poly([x+i*12,y-9,x+i*12+9,y,x+i*12,y+9,x+i*12+4,y]); ctx.fill(); }
+      }
+    }
+  }
+
+  function drawTower(type,cx,cy,ang,lvl,now){
+    ctx.save(); ctx.translate(cx,cy);
+    if(type==='baliste'){
+      ctx.fillStyle='#6b4a2b'; circle(0,0,11); ctx.fill(); ctx.strokeStyle='#22170c'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.rotate(ang);
+      ctx.strokeStyle='#e0cfa6'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(-2,0,12,-1.05,1.05); ctx.stroke();
+      ctx.strokeStyle='#e9eef4'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(14,0); ctx.stroke();
+    }else if(type==='mortier'){
+      ctx.fillStyle='#3a404a'; circle(0,0,12.5); ctx.fill(); ctx.strokeStyle='#959ba6'; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle='#07090c'; circle(0,0,6.5); ctx.fill();
+    }else{
+      ctx.fillStyle='#7c4f25'; circle(0,0,12); ctx.fill();
+      ctx.strokeStyle='#e0924a'; ctx.lineWidth=2; circle(0,0,10); ctx.stroke(); circle(0,0,6.5); ctx.stroke();
+      ctx.fillStyle='rgba(143,233,242,'+(0.7+0.3*Math.sin(now*8))+')'; circle(0,0,3.6); ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle='#f2cf63';
+    for(let i=0;i<lvl;i++) ctx.fillRect(cx-8+i*6,cy+14,4,4);
+  }
+  function ring(x,y,r,color,dash){
+    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.5; if(dash) ctx.setLineDash(dash);
+    ctx.fillStyle='rgba(240,160,75,.07)'; circle(px(x),px(y),r*TS); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  function drawFoe(e,slowed){
+    const x=px(e.x), y=px(e.y);
+    let r=7;
+    if(e.type==='ban'){
+      // Bandit : cuir brun, bandeau noir sur les yeux.
+      ctx.fillStyle='#a9814e'; circle(x,y,r); ctx.fill();
+      ctx.fillStyle='#17130f'; ctx.fillRect(x-r+1,y-3.5,r*2-2,3.5);
+    }else if(e.type==='adv'){
+      // Aventurier : cape bleue, lame au clair.
+      r=6; ctx.fillStyle='#6f9fd8'; circle(x,y,r); ctx.fill();
+      ctx.strokeStyle='#f1f4f8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+3,y+3); ctx.lineTo(x+10,y-6); ctx.stroke();
+    }else if(e.type==='sol'){
+      // Soldat de l'Empire d'Arch-Dawn : plaque sombre, cimier rouge.
+      r=10; ctx.fillStyle='#2c2731'; ctx.fillRect(x-r,y-r,r*2,r*2);
+      ctx.fillStyle='#c0353d'; ctx.fillRect(x-2,y-r-4,4,r+4);
+      ctx.strokeStyle=slowed?'#8fe9f2':'#aab3bf'; ctx.lineWidth=2; ctx.strokeRect(x-r,y-r,r*2,r*2);
+    }else{
+      // Capitaine : même armure, plus massive, bannière rouge.
+      r=15; ctx.fillStyle='#c0353d'; poly([x-r-5,y+r,x,y-r-9,x+r+5,y+r]); ctx.fill();
+      ctx.fillStyle='#1f1b24'; ctx.fillRect(x-r,y-r,r*2,r*2);
+      ctx.strokeStyle=slowed?'#8fe9f2':'#d9dfe6'; ctx.lineWidth=2.5; ctx.strokeRect(x-r,y-r,r*2,r*2);
+      ctx.fillStyle='#c0353d'; ctx.fillRect(x-r+4,y-3,r*2-8,6);
+    }
+    if(e.type==='ban'||e.type==='adv'){
+      circle(x,y,r); ctx.strokeStyle=slowed?'#8fe9f2':'#11140f'; ctx.lineWidth=slowed?2.5:1.5; ctx.stroke();
+    }
+    if(e.hp<e.maxhp){
+      const w=Math.max(16,r*2.2);
+      ctx.fillStyle='rgba(16,20,27,.9)'; ctx.fillRect(x-w/2,y-r-10,w,4);
+      ctx.fillStyle='#e2695b'; ctx.fillRect(x-w/2,y-r-10,w*Math.max(0,e.hp/e.maxhp),4);
+    }
+  }
+
+  function draw(now){
+    const S=G.S;
+    drawTerrain(now);
+    // Portée de la sélection
+    if(ui.sel){
+      const t=G.T(ui.sel.x,ui.sel.y);
+      if(t&&t.t==='slot'){
+        if(t.tower){ const st=towerStats(t.tower.type,t.tower.lvl,t.high); ring(ui.sel.x,ui.sel.y,st.range,'#f0a04b'); }
+        else { const st=towerStats(ui.preview||'baliste',1,t.high); ring(ui.sel.x,ui.sel.y,st.range,'#f0a04b',[6,5]); }
+      }
+    }
+    for(const tw of S.towers) drawTower(tw.type,px(tw.x),px(tw.y),tw.ang,tw.lvl,now);
+    // Chantiers
+    for(const j of S.jobs){
+      const cx=px(j.x), cy=px(j.y);
+      if(j.kind==='build'){ ctx.globalAlpha=0.4; drawTower(j.tower,cx,cy,0,0,now); ctx.globalAlpha=1; }
+      ctx.fillStyle='rgba(16,20,27,.9)'; ctx.fillRect(cx-16,cy-21,32,6);
+      ctx.fillStyle=j.worker?'#f0a04b':'#9ca8b8'; ctx.fillRect(cx-15,cy-20,30*Math.min(1,j.prog/j.time),4);
+      if(!j.worker){ ctx.fillStyle='#9ca8b8'; for(let i=0;i<3;i++){ circle(cx-6+i*6,cy-18,1.4+0.6*Math.sin(now*5+i)); ctx.fill(); } }
+    }
+    for(const e of S.enemies) drawFoe(e,S.time<e.slowUntil);
+    // Ouvriers
+    for(const w of S.workers){
+      const ox=((w.id%3)-1)*6, oy=(w.id%2?-5:5), x=px(w.x)+ox, y=px(w.y)+oy, col=WCOL[w.role];
+      if(w.path.length&&(w.state==='move'||w.state==='back'||w.state==='tomine')){
+        ctx.strokeStyle=col; ctx.globalAlpha=w.state==='back'?0.28:0.55; ctx.lineWidth=1.5; ctx.setLineDash([2,5]);
+        ctx.beginPath(); ctx.moveTo(x,y); for(const p of w.path) ctx.lineTo(px(p[0])+ox,px(p[1])+oy); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
+      ctx.fillStyle='rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(x,y+7,6,2.5,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=col; circle(x,y,6); ctx.fill(); ctx.strokeStyle='#12161d'; ctx.lineWidth=1.5; ctx.stroke();
+      if(w.role==='inge'){ ctx.fillStyle='#e9eef4'; poly([x-5,y-3,x+5,y-3,x,y-14]); ctx.fill(); ctx.stroke(); }
+      else { ctx.fillStyle='#c5cdd8'; ctx.beginPath(); ctx.arc(x,y-1.5,6,Math.PI,0); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      if(w.state==='work'||w.state==='mining'){
+        const a=-0.9+Math.abs(Math.sin(now*9+w.id))*1.3;
+        ctx.strokeStyle=w.state==='mining'?'#f2cf63':'#e9eef4'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+4,y); ctx.lineTo(x+4+Math.cos(a)*10,y+Math.sin(a)*10); ctx.stroke();
+      }
+    }
+    // Tirs et effets
+    for(const s of S.shots){
+      if(s.k==='bolt'){
+        const x=px(s.x), y=px(s.y);
+        ctx.strokeStyle='#f5f0dc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x-Math.cos(s.ang)*7,y-Math.sin(s.ang)*7); ctx.lineTo(x+Math.cos(s.ang)*4,y+Math.sin(s.ang)*4); ctx.stroke();
+      }else{
+        const f=s.t/s.dur, x=px(s.sx+(s.tx-s.sx)*f), y=px(s.sy+(s.ty-s.sy)*f)-Math.sin(f*Math.PI)*26;
+        ctx.fillStyle='#14181f'; circle(x,y,4+Math.sin(f*Math.PI)*2); ctx.fill(); ctx.strokeStyle='#f0a04b'; ctx.lineWidth=1.5; ctx.stroke();
+      }
+    }
+    for(const f of S.fx){
+      const k=f.t/f.dur;
+      if(f.k==='zap'){
+        ctx.strokeStyle='rgba(143,233,242,'+(1-k)+')'; ctx.lineWidth=2; ctx.beginPath();
+        const x1=px(f.x1), y1=px(f.y1), x2=px(f.x2), y2=px(f.y2);
+        ctx.moveTo(x1,y1);
+        for(let i=1;i<4;i++){ const u=i/4; ctx.lineTo(x1+(x2-x1)*u+(hash(i,f.x2*9)-0.5)*12,y1+(y2-y1)*u+(hash(f.y2*7,i)-0.5)*12); }
+        ctx.lineTo(x2,y2); ctx.stroke();
+      }else if(f.k==='boom'){
+        ctx.strokeStyle='rgba(240,160,75,'+(1-k)+')'; ctx.lineWidth=3; circle(px(f.x),px(f.y),f.r*TS*(0.3+0.7*k)); ctx.stroke();
+        ctx.fillStyle='rgba(240,160,75,'+(0.25*(1-k))+')'; ctx.fill();
+      }else if(f.k==='coin'){
+        ctx.font='700 13px "Alegreya Sans", system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='rgba(242,207,99,'+(1-k)+')'; ctx.fillText('+'+f.n,px(f.x),px(f.y)-10-k*16);
+      }else if(f.k==='leak'){
+        ctx.strokeStyle='rgba(226,105,91,'+(1-k)+')'; ctx.lineWidth=4; circle(px(f.x),px(f.y),20+k*36); ctx.stroke();
+      }
+    }
+    // Survol et sélection
+    if(ui.hover){ ctx.strokeStyle='rgba(233,238,244,.5)'; ctx.lineWidth=1.5; ctx.strokeRect(ui.hover.x*TS+1,ui.hover.y*TS+1,TS-2,TS-2); }
+    if(ui.sel){ ctx.strokeStyle='#f0a04b'; ctx.lineWidth=2.5; ctx.strokeRect(ui.sel.x*TS+1.5,ui.sel.y*TS+1.5,TS-3,TS-3); }
+  }
+
+  // ---------- Panneaux ----------
+  function setHTML(node,html){ if(node._h!==html){ node.innerHTML=html; node._h=html; } }
+  function setText(node,text){ if(node._t!==text){ node.textContent=text; node._t=text; } }
+  function actBtn(act,name,sp,chk,extra,price){
+    return '<button type="button" class="act'+(chk.ok?'':' off')+'" data-do="order" data-act="'+act+'" aria-disabled="'+(!chk.ok)+'">'
+      +'<span class="act-name">'+name+'</span><span class="act-cost">'+(price||sp.cost+' or')+'</span>'
+      +'<span class="act-meta">'+(extra?extra+' · ':'')+ROLES[sp.role].short+' · '+sp.time+' s de chantier</span>'
+      +(chk.ok?'':'<span class="act-why">'+chk.why+'</span>')+'</button>';
+  }
+  function jobLine(j){
+    if(!j.worker) return 'En attente d’un '+ROLES[j.role].short+' libre.';
+    return j.worker.state==='move'?'Un '+ROLES[j.role].short+' est en route.':'Chantier en cours.';
+  }
+  function selHTML(){
+    const S=G.S, s=ui.sel;
+    if(!s) return '<h2>Ordres</h2><p>Clique une case de la carte pour donner un ordre.</p>'
+      +'<ol class="steps"><li>Choisis un emplacement cerclé d’orange et commande une tourelle.</li>'
+      +'<li>Un emplacement gris est coupé du camp : ouvre son accès d’abord.</li>'
+      +'<li>Ouvre la mine d’or pour un revenu régulier.</li>'
+      +'<li>Lance la vague quand tes ouvriers sont en place.</li></ol>';
+    const t=G.T(s.x,s.y), j=G.jobAt(s.x,s.y);
+    if(t.t==='slot'){
+      const head='<h2>'+(t.high?'Promontoire':'Emplacement')+'</h2>'+(t.high?'<span class="tag high">Portée +30 %</span>':'');
+      if(t.tower){
+        const d=TOWERS[t.tower.type], st=towerStats(t.tower.type,t.tower.lvl,t.high);
+        let h='<h2>'+d.name+'<small>niveau '+t.tower.lvl+'/3</small></h2>'+(t.high?'<span class="tag high">Promontoire, portée +30 %</span>':'')
+          +'<dl class="kv"><dt>Dégâts</dt><dd>'+Math.round(st.dmg)+'</dd><dt>Portée</dt><dd>'+st.range.toFixed(1).replace('.',',')+' cases</dd><dt>Cadence</dt><dd>'+st.rate.toFixed(2).replace('.',',')+' tir/s</dd><dt>Investi</dt><dd>'+t.tower.invested+' or</dd></dl>';
+        if(j) return h+'<p class="state">'+(j.kind==='dismantle'?'Démontage commandé. ':'Amélioration commandée. ')+jobLine(j)+'</p>';
+        if(t.tower.lvl>=3) h+='<p>Niveau maximal atteint.</p>';
+        h+='<div class="acts">';
+        if(t.tower.lvl<3){ const c=G.check(s.x,s.y,'upgrade'); h+=actBtn('upgrade','Améliorer au niveau '+(t.tower.lvl+1),c.sp,c,'dégâts +60 %, portée +8 %'); }
+        const dm=G.check(s.x,s.y,'dismantle');
+        h+=actBtn('dismantle','Démonter',dm.sp,dm,'rend 75 % de l’or investi','+'+dm.sp.refund+' or');
+        return h+'</div>';
+      }
+      if(j) return head+'<p class="state">'+TOWERS[j.tower].name+' commandée. '+jobLine(j)+'</p>';
+      if(!G.isReach(s.x,s.y)){
+        const chain=G.accessChain(s.x,s.y);
+        let h=head+'<p class="warn">Coupé du camp. Accès à ouvrir, dans l’ordre :</p><ol class="steps">';
+        for(const o of chain) h+='<li><button type="button" class="link" data-do="goto" data-x="'+o.x+'" data-y="'+o.y+'">'+WORKS[OBST_ACT[o.kind]].label+'</button> ('+ROLES[WORKS[OBST_ACT[o.kind]].role].short+', '+WORKS[OBST_ACT[o.kind]].cost+' or)</li>';
+        return h+'</ol>';
+      }
+      let h=head+'<div class="acts">';
+      for(const ty of Object.keys(TOWERS)){ const c=G.check(s.x,s.y,'build:'+ty); h+=actBtn('build:'+ty,TOWERS[ty].name,c.sp,c,TOWERS[ty].desc); }
+      return h+'</div>';
+    }
+    if(t.t==='obst'){
+      if(t.done) return '<h2>'+OBST_DONE[t.kind]+'</h2><p>L’accès est ouvert. Les ouvriers peuvent passer.</p>';
+      const act=OBST_ACT[t.kind];
+      let h='<h2>'+OBST_NAME[t.kind]+'</h2><p>'+OBST_DESC[t.kind]+'</p>';
+      if(j) return h+'<p class="state">'+WORKS[act].label+' : commandé. '+jobLine(j)+'</p>';
+      const c=G.check(s.x,s.y,act);
+      return h+'<div class="acts">'+actBtn(act,WORKS[act].label,c.sp,c)+'</div>';
+    }
+    if(t.t==='mine'){
+      if(!t.open){
+        let h='<h2>Mine d’or</h2><p>Une galerie condamnée. Une fois rouverte, chaque mineur sans chantier y extrait '+MINE_YIELD+' or toutes les '+MINE_PERIOD+' secondes. '+MINE_CAP+' places.</p>';
+        if(j) return h+'<p class="state">Ouverture commandée. '+jobLine(j)+'</p>';
+        const c=G.check(s.x,s.y,'openmine');
+        return h+'<div class="acts">'+actBtn('openmine',SITES.openmine.label,c.sp,c)+'</div>';
+      }
+      const n=S.workers.filter(w=>w.state==='mining').length, there=G.minersAtMine();
+      let line;
+      if(there>=MINE_CAP) line='Les '+MINE_CAP+' places sont prises.';
+      else if(there>0) line='Il reste une place : un second mineur doublerait le revenu.';
+      else line='Personne à la mine. Un mineur y descend dès qu’il n’a plus de chantier.';
+      return '<h2>Mine d’or<small>'+n+'/'+MINE_CAP+' mineurs</small></h2>'
+        +'<dl class="kv"><dt>Revenu</dt><dd>'+(n*MINE_YIELD)+' or toutes les '+MINE_PERIOD+' s</dd><dt>Extrait</dt><dd>'+S.mined+' or</dd></dl>'
+        +'<p>'+(there>n?'Un mineur est en chemin. ':'')+line+' Un déblayage commandé rappelle un mineur.</p>';
+    }
+    if(t.t==='post'){
+      if(t.built) return '<h2>Avant-poste</h2><p>Un ouvrier sans ordre rentre au camp le plus proche. Depuis ici, les deux entrées de l’ouest sont à quelques pas par la galerie.</p>';
+      let h='<h2>Site d’avant-poste</h2><p>Un second camp, relié aux deux passes par une galerie. Les ouvriers de l’ouest y attendront au lieu de retraverser la montagne.</p>';
+      if(j) return h+'<p class="state">Avant-poste commandé. '+jobLine(j)+'</p>';
+      const c=G.check(s.x,s.y,'outpost');
+      return h+'<div class="acts">'+actBtn('outpost',SITES.outpost.label,c.sp,c)+'</div>';
+    }
+    if(t.t==='camp') return '<h2>Camp du Conclave</h2><p>Les recrues arrivent ici, et tout ouvrier sans ordre rentre au camp le plus proche.</p>';
+    if(t.nest) return '<h2>Nid de Cytra</h2><p>'+S.eggs+' œuf'+(S.eggs>1?'s':'')+' à garder. Chaque assaillant qui arrive ici en détruit.</p>';
+    if(t.t==='road') return '<h2>Chemin des assaillants</h2><p>Rien ne se construit sur la route. Les ouvriers l’empruntent sans être inquiétés.</p>';
+    if(t.t==='ledge') return '<h2>Galerie</h2><p>Un passage pour les ouvriers, sans place pour une tourelle.</p>';
+    return '<h2>Roche pleine</h2><p>Rien à faire ici.</p>';
+  }
+  function crewHTML(){
+    const S=G.S;
+    let h='<h2>Équipe<small>'+S.workers.length+'/'+MAX_CREW+'</small></h2><ul class="crew">';
+    for(const w of S.workers){
+      const st=WSTATE[w.state];
+      h+='<li><span class="dot '+w.role+'"></span><span>'+ROLES[w.role].name+'</span><span class="st '+st[1]+'">'+st[0]+'</span></li>';
+    }
+    h+='</ul><div class="acts">';
+    for(const r of Object.keys(ROLES)){
+      const c=G.checkRecruit(r);
+      h+='<button type="button" class="act'+(c.ok?'':' off')+'" data-do="recruit" data-role="'+r+'" aria-disabled="'+(!c.ok)+'">'
+        +'<span class="act-name">Recruter un '+ROLES[r].short+'</span><span class="act-cost">'+ROLES[r].cost+' or</span>'
+        +'<span class="act-meta">Spécialité : '+ROLES[r].spec+'</span></button>';
+    }
+    return h+'</div>';
+  }
+  function threatHTML(i){
+    const lv=threatLevel(i); let h='<span class="threat" role="img" aria-label="'+lv+' sur 5">';
+    for(let k=1;k<=5;k++) h+='<i'+(k<=lv?' class="on"':'')+'></i>';
+    return h+'</span>';
+  }
+  function toast(text,kind){
+    el.toast.textContent=text; el.toast.className='toast'+(kind?' '+kind:''); el.toast.hidden=false;
+    ui.toastT=performance.now()+2600;
+  }
+  function updateUI(){
+    const S=G.S;
+    setText(el.gold,String(S.gold)); setText(el.eggs,String(S.eggs)); setText(el.wave,S.wave+'/'+WAVES.length);
+    let next='', btn='', dis=false;
+    if(S.phase==='prep'){
+      next='<b>Vague '+(S.wave+1)+(S.countdown!=null?' dans '+Math.ceil(S.countdown)+' s':'')+'.</b> Menace'+threatHTML(S.wave)+waveSummary(S.wave);
+      btn=S.countdown!=null?'Lancer maintenant (+'+Math.floor(S.countdown)+' or)':'Lancer la vague '+(S.wave+1);
+    }else if(S.phase==='wave'){
+      const left=S.enemies.length+S.spawnQ.length;
+      next='<b>Vague '+S.wave+' en cours.</b> '+left+' assaillant'+(left>1?'s':'')+' encore debout.';
+      btn='Vague en cours'; dis=true;
+    }else{ next=S.phase==='won'?'<b>La couvée est sauve.</b>':'<b>La couvée est perdue.</b>'; btn='Partie terminée'; dis=true; }
+    setHTML(el.next,next); setText(el.btnWave,btn); el.btnWave.disabled=dis;
+    setText(el.btnPause,ui.paused?'Reprendre':'Pause'); el.btnPause.classList.toggle('on',ui.paused);
+    setText(el.btnSpeed,'Vitesse ×'+ui.speed);
+    setText(el.btnReset,ui.resetArmed>performance.now()?'Confirmer ?':'Recommencer');
+    setHTML(el.sel,selHTML()); setHTML(el.crew,crewHTML());
+    while(S.events.length){ const e=S.events.shift(); toast(e.text,e.type==='leak'?'warn':'good'); }
+    if(!el.toast.hidden&&performance.now()>ui.toastT) el.toast.hidden=true;
+    const over=S.phase==='won'||S.phase==='lost';
+    if(over&&el.end.hidden){
+      el.end.innerHTML=(S.phase==='won'
+        ?'<h2>La couvée est sauve</h2><p>Dix vagues repoussées, '+S.eggs+' œuf'+(S.eggs>1?'s':'')+' sur '+START_EGGS+' intact'+(S.eggs>1?'s':'')+'. Cytra s’en souviendra.</p>'
+        :'<h2>La couvée est perdue</h2><p>Le nid est tombé à la vague '+S.wave+'. Ouvre plus tôt la mine et les positions qui couvrent les deux passes.</p>')
+        +'<p>'+S.kills+' assaillants abattus · '+S.spent+' or dépensé · '+S.mined+' or extrait · '+S.towers.length+' tourelle'+(S.towers.length>1?'s':'')+'</p>'
+        +'<button type="button" class="btn primary" id="btn-again">Rejouer</button>';
+      el.end.hidden=false;
+    }else if(!over&&!el.end.hidden){ el.end.hidden=true; }
+  }
+  function restart(){ G=createGame(); ui.sel=null; ui.preview=null; ui.paused=false; ui.resetArmed=0; el.toast.hidden=true; }
+
+  // ---------- Entrées ----------
+  function tileAt(ev){
+    const r=cv.getBoundingClientRect();
+    const x=Math.floor((ev.clientX-r.left)/r.width*COLS), y=Math.floor((ev.clientY-r.top)/r.height*ROWS);
+    return (x>=0&&y>=0&&x<COLS&&y<ROWS)?{x,y}:null;
+  }
+  cv.addEventListener('mousemove',ev=>{
+    ui.hover=tileAt(ev);
+    const t=ui.hover&&G.T(ui.hover.x,ui.hover.y);
+    cv.style.cursor=t&&(t.t==='slot'||t.t==='obst'||t.t==='mine'||t.t==='post')?'pointer':'default';
+  });
+  cv.addEventListener('mouseleave',()=>{ ui.hover=null; });
+  cv.addEventListener('click',ev=>{ const p=tileAt(ev); if(p){ ui.sel=p; ui.preview=null; } });
+  document.querySelector('.side').addEventListener('click',ev=>{
+    const b=ev.target.closest('[data-do]'); if(!b) return;
+    const what=b.dataset.do;
+    if(what==='goto'){ ui.sel={x:+b.dataset.x,y:+b.dataset.y}; return; }
+    if(what==='recruit'){
+      const r=G.recruit(b.dataset.role);
+      toast(r.ok?ROLES[b.dataset.role].name+' recruté : il arrive au camp':r.why,r.ok?'good':'warn'); return;
+    }
+    if(what==='order'&&ui.sel){
+      const r=G.order(ui.sel.x,ui.sel.y,b.dataset.act);
+      if(!r.ok) toast(r.why,'warn');
+      else toast(r.sp.label+(r.sp.kind==='dismantle'?' commandé : +'+r.sp.refund+' or à la fin':' : −'+r.sp.cost+' or')+(r.waiting?', en attente d’un '+ROLES[r.sp.role].short+' libre':''),'good');
+    }
+  });
+  document.querySelector('.side').addEventListener('mouseover',ev=>{
+    const b=ev.target.closest('[data-act]');
+    ui.preview=b&&b.dataset.act.indexOf('build:')===0?b.dataset.act.slice(6):null;
+  });
+  el.btnWave.addEventListener('click',()=>{ const r=G.startWave(false); if(r.ok&&r.bonus) toast('Vague lancée en avance : +'+r.bonus+' or','good'); });
+  el.btnPause.addEventListener('click',()=>{ ui.paused=!ui.paused; });
+  el.btnSpeed.addEventListener('click',()=>{ ui.speed=ui.speed%3+1; });
+  el.btnReset.addEventListener('click',()=>{ if(ui.resetArmed>performance.now()) restart(); else ui.resetArmed=performance.now()+3000; });
+  el.end.addEventListener('click',ev=>{ if(ev.target.id==='btn-again') restart(); });
+  window.addEventListener('resize',resize);
+
+  // ---------- Boucle ----------
+  const DT=1/60; let last=performance.now(), acc=0;
+  function frame(t){
+    const elapsed=Math.min(0.1,(t-last)/1000); last=t;
+    if(!ui.paused){ acc+=elapsed*ui.speed; while(acc>=DT){ G.step(DT); acc-=DT; } }
+    draw(t/1000); updateUI();
+    requestAnimationFrame(frame);
+  }
+  resize(); draw(0); updateUI();
+  requestAnimationFrame(frame);
+})();
+</script>
