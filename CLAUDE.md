@@ -11,29 +11,40 @@ Le but actuel : reproduire dans Unreal le prototype web validé, tel qu'il est, 
 - `Docs/prototype/nids-de-cytra.html` : le prototype web validé. Toute la logique de jeu est entre `/*LOGIC-START*/` et `/*LOGIC-END*/`, sans dépendance à l'affichage. En cas de doute sur un comportement, lis-la.
 - Si le GDD et le prototype se contredisent, ne tranche pas seul : signale l'écart et demande.
 
-## Environnement (à compléter au jalon J00, puis supprimer cette parenthèse)
+## Environnement
 
-- Version du moteur : `<à lire dans EngineAssociation du .uproject>`
-- Dossier du moteur : `<par exemple C:\Program Files\Epic Games\UE_5.8>`
-- Projet : `<Nom>.uproject`, module de jeu `<Nom>`
-- Système : `<Windows, macOS ou Linux>`
-- Gestion de versions : Git avec Git LFS, dépôt privé sur GitHub, branche principale `main`
+- Version du moteur : 5.8 (`EngineAssociation`), build 5.8.4 installé depuis le launcher
+- Dossier du moteur : `E:\Unreal Engines\UE_5.8` (absent du registre Windows, qui ne liste que 5.6 et 5.7)
+- Projet : `D:\Projet Unreal\NidsDeCytra\NidsDeCytra.uproject`, module de jeu `NidsDeCytra`, cibles `NidsDeCytra` et `NidsDeCytraEditor`
+- Système : Windows 11 Pro, Visual Studio 2022 (MSVC 14.44)
+- Gestion de versions : Git avec Git LFS, dépôt privé `https://github.com/LeonLighter/nids-de-cytra`, branche principale `main`
+- Plugins : Diversion désactivé (le projet est sur Git) ; `MCPClientToolset` et `ModelContextProtocol` actifs pour le serveur `unreal-mcp`
 
-## Commandes (modèles pour Windows ; remplace-les au jalon J00 par les commandes réelles et testées)
+## Commandes (testées au jalon J00)
 
-Compiler l'éditeur :
+Les lancer depuis PowerShell : appelé depuis Git Bash, `Build.bat` ne fait rien et ne renvoie rien.
+
+Compiler l'éditeur (éditeur fermé) :
 
 ```
-"<UE>\Engine\Build\BatchFiles\Build.bat" <Nom>Editor Win64 Development -Project="<chemin>\<Nom>.uproject" -WaitMutex
+& "E:\Unreal Engines\UE_5.8\Engine\Build\BatchFiles\Build.bat" NidsDeCytraEditor Win64 Development -Project="D:\Projet Unreal\NidsDeCytra\NidsDeCytra.uproject" -WaitMutex
 ```
+
+Succès : `Result: Succeeded` et code de sortie 0.
 
 Lancer les tests d'automatisation sans affichage :
 
 ```
-"<UE>\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "<chemin>\<Nom>.uproject" -ExecCmds="Automation RunTest Cytra;Quit" -unattended -nopause -nosplash -nullrhi -log
+& "E:\Unreal Engines\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "D:\Projet Unreal\NidsDeCytra\NidsDeCytra.uproject" -ExecCmds="Automation RunTest Cytra;Quit" -unattended -nopause -nosplash -nullrhi -log -stdout
 ```
 
-La documentation 5.8 écrit `Automation RunTest`. Si aucun test ne se lance, essaie `Automation RunTests` et note ici la forme qui fonctionne. Le résultat se lit dans la sortie et dans `Saved/Logs/`.
+La forme `Automation RunTest` fonctionne en 5.8. Lire le résultat dans la sortie ou dans `Saved/Logs/NidsDeCytra.log` :
+
+- `Found N automation tests based on 'Cytra'` puis la liste des tests ;
+- une ligne `Test Completed. Result={Success}` (ou `{Fail}`) par test ;
+- `**** TEST COMPLETE. EXIT CODE: 0 ****` si tout est vert (code de sortie du processus : 0).
+
+Deux lignes `LogAutomationTest: Error: Condition failed` apparaissent au démarrage, avant tout test : elles viennent de l'autotest interne du moteur (`UE::UnifiedErrorTest`), pas du projet. Les ignorer.
 
 Git et GitHub :
 
