@@ -46,6 +46,14 @@ La forme `Automation RunTest` fonctionne en 5.8. Lire le résultat dans la sorti
 
 Deux lignes `LogAutomationTest: Error: Condition failed` apparaissent au démarrage, avant tout test : elles viennent de l'autotest interne du moteur (`UE::UnifiedErrorTest`), pas du projet. Les ignorer.
 
+Lancer le jeu sans affichage, charger L_Passe01 et quitter (pour lire les lignes `LogCytra` dans `Saved/Logs/NidsDeCytra.log`) :
+
+```
+& "E:\Unreal Engines\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "D:\Projet Unreal\NidsDeCytra\NidsDeCytra.uproject" -game -nullrhi -unattended -nopause -nosplash -log -stdout -ExecCmds="Quit"
+```
+
+Bruit connu, sans rapport avec le projet : `LogPython: Error` venant de `ToolsetRegistry/.../init_unreal.py` (plugin expérimental du moteur), et `FindPlayerStart: ... NO PLAYERSTART` (le niveau n'a pas de PlayerStart, la caméra est placée par le GameMode).
+
 Git et GitHub :
 
 ```
