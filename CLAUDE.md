@@ -52,6 +52,8 @@ Lancer le jeu sans affichage, charger L_Passe01 et quitter (pour lire les lignes
 & "E:\Unreal Engines\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "D:\Projet Unreal\NidsDeCytra\NidsDeCytra.uproject" -game -nullrhi -unattended -nopause -nosplash -log -stdout -ExecCmds="Quit"
 ```
 
+Pour vérifier à l'écran une fin de vague ou la victoire avant les tourelles, la commande console de développement `Cytra.KillAll` (absente des versions Shipping) abat tous les ennemis présents sur la carte, en versant leur or.
+
 Bruit connu, sans rapport avec le projet : `LogPython: Error` venant de `ToolsetRegistry/.../init_unreal.py` (plugin expérimental du moteur), et `FindPlayerStart: ... NO PLAYERSTART` (le niveau n'a pas de PlayerStart, la caméra est placée par le GameMode).
 
 Git et GitHub :
@@ -111,7 +113,7 @@ Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs
 - `Source/<Nom>/World/` : `ACytraBoard` (génère le plateau depuis la carte, en instanced static meshes), `ACytraEnemy`, `ACytraWorker`, `ACytraTower`, `ACytraProjectile`, `ACytraNest`.
 - `Source/<Nom>/UI/` : interface écrite en C++ (Slate, ou UMG construit en C++), sans Widget Blueprint.
 - `Source/<Nom>/Tests/` : tests d'automatisation.
-- `Content/Data/` : carte, vagues et équilibrage en JSON. Ce dossier doit être ajouté aux dossiers non-assets à empaqueter.
+- `Content/Data/` : carte, vagues et équilibrage en JSON, apparence provisoire des ennemis (`Looks.json`), textes affichés (`Text/CytraText.csv`, table de chaînes). Ce dossier est ajouté aux dossiers non-assets à empaqueter.
 - Entrées : Enhanced Input, actions et contexte créés en C++.
 - Vitesse ×1, ×2, ×3 par dilatation globale du temps. Pause par mise en pause du jeu, les ordres restant possibles en pause.
 
@@ -121,8 +123,8 @@ Les numéros vont de 10 en 10 et chaque phase a sa centaine : phase 1 (reproduir
 
 - **J00 · Socle.** Environnement détecté, commandes vérifiées, `.gitignore` et `.gitattributes`, arborescence, premier test, classes de base du jeu, plateau de 24 × 14 cases généré depuis les données.
 - **J10 · Règles pures.** Grille, accessibilité, chaîne d'accès, chemins, économie, vagues, menace et temps de préparation, avec les tests de référence de la section 13 du GDD.
-- **J20 · Ennemis et vagues.** Ennemis sur les deux routes, nid et œufs, victoire et défaite, déroulé des vagues, affichage minimal (or, œufs, vague, lancer la vague).
+- **J20 · Ennemis et vagues.** Ennemis sur les deux routes, nid et œufs, victoire et défaite, déroulé des vagues, bonus de lancement anticipé, affichage minimal (or, œufs, vague, lancer la vague).
 - **J30 · Ouvriers et chantiers.** Sélection d'une case à la souris, panneau d'ordres, ouvriers, déblayage, pont, échelle, avant-poste, retour au camp le plus proche.
 - **J40 · Tourelles.** Baliste, mortier, bobine, tirs, améliorations, démontage.
-- **J50 · Mine et recrutement.** Mine d'or, recrutement, bonus de lancement anticipé.
+- **J50 · Mine et recrutement.** Mine d'or, recrutement.
 - **J60 · Interface complète.** Panneau d'équipe, messages, pause, vitesse, écran de fin. Partie entière comparée au prototype.
