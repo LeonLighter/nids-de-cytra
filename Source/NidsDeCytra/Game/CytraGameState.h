@@ -57,4 +57,8 @@ public:
 	/** Enemies of the current wave still alive or still to spawn. */
 	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
 	int32 EnemiesLeft = 0;
+
+	/** Changes whenever a job is ordered, taken, started or finished, so the order panel knows to redraw. */
+	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
+	uint32 JobsSignature = 0;
 };

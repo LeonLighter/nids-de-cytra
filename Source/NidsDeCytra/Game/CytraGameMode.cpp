@@ -20,7 +20,9 @@
 #include "Rules/CytraWaveLoader.h"
 #include "World/CytraBoard.h"
 #include "World/CytraEnemy.h"
+#include "World/CytraMarkers.h"
 #include "World/CytraNest.h"
+#include "World/CytraWorker.h"
 
 #if !UE_BUILD_SHIPPING
 namespace
@@ -127,6 +129,7 @@ bool ACytraGameMode::CreateMatch()
 	const FIntPoint NestCell = Board->GetMap().Nest;
 	const FVector NestLocation = Board->CellToWorld(NestCell) + FVector(0.0f, 0.0f, Board->GetTileHeight(Board->GetMap().Get(NestCell)));
 	Nest = GetWorld()->SpawnActor<ACytraNest>(NestLocation, FRotator::ZeroRotator, Params);
+	Markers = GetWorld()->SpawnActor<ACytraMarkers>(Params);
 	StepAccumulator = 0.0;
 	LastPhase = Match->GetPhase();
 	LastWave = Match->GetWave();
@@ -147,6 +150,35 @@ void ACytraGameMode::LaunchWave()
 		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold"), Result.Bonus);
 	}
 	SyncView();
+}
+
+FCytraOrderResult ACytraGameMode::Order(const FIntPoint& Cell, const FCytraOrderAction& Action)
+{
+	if (!Match)
+	{
+		return FCytraOrderResult();
+	}
+	const FCytraOrderResult Result = Match->Order(Cell, Action);
+	if (Result.IsAccepted())
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: order %s at (%d,%d), -%d gold%s"), *Action.Id.ToString(), Cell.X, Cell.Y,
+			Result.Check.Spec->Cost, Result.bWaiting ? TEXT(", waiting for a worker") : TEXT(""));
+	}
+	else
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: order %s at (%d,%d) refused (%d)"), *Action.Id.ToString(), Cell.X, Cell.Y, static_cast<int32>(Result.Check.Refusal));
+	}
+	bGridChanged = true;
+	SyncView();
+	return Result;
+}
+
+void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
+{
+	if (Markers && Board)
+	{
+		Markers->ShowSelection(*Board, Cell);
+	}
 }
 
 void ACytraGameMode::KillAllEnemies()
@@ -175,7 +207,17 @@ void ACytraGameMode::SyncView()
 		return;
 	}
 	LogEvents();
+	if (bGridChanged)
+	{
+		bGridChanged = false;
+		Board->SyncGrid(Match->GetGrid(), Match->GetJobs());
+	}
 	SyncEnemies();
+	SyncWorkers();
+	if (Markers)
+	{
+		Markers->ShowJobs(*Board, Match->GetJobs());
+	}
 	if (Nest)
 	{
 		Nest->SetEggs(Match->GetEggs(), ACytraBoard::CellSize);
@@ -221,6 +263,31 @@ void ACytraGameMode::SyncEnemies()
 	}
 }
 
+void ACytraGameMode::SyncWorkers()
+{
+	for (const FCytraWorker& Worker : Match->GetWorkers())
+	{
+		TObjectPtr<ACytraWorker>& Actor = WorkerActors.FindOrAdd(Worker.Id);
+		if (!Actor)
+		{
+			FActorSpawnParameters Params;
+			Params.ObjectFlags |= RF_Transient;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Actor = GetWorld()->SpawnActor<ACytraWorker>(Params);
+			if (!Actor)
+			{
+				continue;
+			}
+			Actor->SetLook(Looks.WorkerLook(Worker.Role), ACytraBoard::CellSize);
+		}
+		// Offset by id as in the web prototype, so that workers on the same cell stay apart.
+		const FVector2d Offset(((Worker.Id % 3) - 1) * 6.0 / 40.0, (Worker.Id % 2 ? -5.0 : 5.0) / 40.0);
+		const FIntPoint Cell(FMath::FloorToInt32(Worker.Position.X + 0.5), FMath::FloorToInt32(Worker.Position.Y + 0.5));
+		const float Height = Board->GetTileHeight(Board->GetMap().Get(Cell));
+		Actor->SetActorLocation(Board->GridToWorld(Worker.Position + Offset) + FVector(0.0f, 0.0f, Height));
+	}
+}
+
 ACytraEnemy* ACytraGameMode::SpawnEnemy(FName Type)
 {
 	if (!Looks.Enemies.Contains(Type) && !EnemiesWithoutLook.Contains(Type))
@@ -251,6 +318,10 @@ void ACytraGameMode::LogEvents()
 			break;
 		case ECytraMatchEventType::WaveCleared:
 			UE_LOG(LogCytra, Log, TEXT("Match: wave %d cleared, +%d gold"), Event.Wave, Event.Gold);
+			break;
+		case ECytraMatchEventType::JobDone:
+			UE_LOG(LogCytra, Log, TEXT("Match: job %s done at (%d,%d), %d slots opened"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.OpenedSlots);
+			bGridChanged = true;
 			break;
 		}
 	}

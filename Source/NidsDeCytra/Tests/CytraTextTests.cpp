@@ -7,6 +7,8 @@
 #include "Internationalization/StringTable.h"
 #include "Internationalization/StringTableCore.h"
 #include "Internationalization/StringTableRegistry.h"
+#include "Rules/CytraBalance.h"
+#include "Rules/CytraMapDef.h"
 #include "UI/CytraText.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraTextKeysPresentTest, "Cytra.UI.Text.KeysPresent", CytraTest::Flags)
@@ -42,6 +44,50 @@ bool FCytraTextFormatsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Several enemies left"), Seven, FString(TEXT("Vague 2 en cours. 7 assaillants encore debout.")));
 	const FString One = FText::Format(CytraText::Get(TEXT("Hud.WaveRunning")), 2, 1).ToString();
 	TestEqual(TEXT("One enemy left"), One, FString(TEXT("Vague 2 en cours. 1 assaillant encore debout.")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraTextDataKeysTest, "Cytra.UI.Text.DataKeys", CytraTest::Flags)
+
+bool FCytraTextDataKeysTest::RunTest(const FString& Parameters)
+{
+	FCytraMapDef Map;
+	FCytraBalance Balance;
+	if (!CytraTest::LoadMapAndBalance(*this, Map, Balance))
+	{
+		return false;
+	}
+
+	// A specialty or a work added to the data needs its texts too.
+	TArray<FString> Keys;
+	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
+	{
+		Keys.Add(FString::Printf(TEXT("Role.%s.Short"), *Role.Key.ToString()));
+	}
+	for (const TPair<FName, FCytraWorkDef>& Work : Balance.Works)
+	{
+		Keys.Add(FString::Printf(TEXT("Work.%s.Label"), *Work.Key.ToString()));
+		Keys.Add(FString::Printf(TEXT("Work.%s.Ordered"), *Work.Key.ToString()));
+	}
+	const UEnum* TileEnum = StaticEnum<ECytraTileType>();
+	for (int32 i = 0; i < TileEnum->NumEnums() - 1; ++i)
+	{
+		const ECytraTileType Type = static_cast<ECytraTileType>(TileEnum->GetValueByIndex(i));
+		const FString Name = TileEnum->GetNameStringByIndex(i);
+		Keys.Add(FString::Printf(TEXT("Tile.%s.Title"), *Name));
+		if (!IsCytraSlot(Type))
+		{
+			Keys.Add(FString::Printf(TEXT("Tile.%s.Desc"), *Name));
+		}
+		if (IsCytraObstacle(Type) || Type == ECytraTileType::OutpostSite)
+		{
+			Keys.Add(FString::Printf(TEXT("Tile.%s.Opened"), *Name));
+		}
+	}
+	for (const FString& Key : Keys)
+	{
+		TestTrue(FString::Printf(TEXT("Key %s present"), *Key), CytraText::Has(Key));
+	}
 	return true;
 }
 

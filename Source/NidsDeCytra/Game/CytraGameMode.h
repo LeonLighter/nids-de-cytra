@@ -10,7 +10,9 @@
 
 class ACytraBoard;
 class ACytraEnemy;
+class ACytraMarkers;
 class ACytraNest;
+class ACytraWorker;
 
 /**
  * Runs the match: owns the rules simulation, advances it in fixed steps and relays player orders to it.
@@ -37,11 +39,20 @@ public:
 	/** The board placed in the level, or a new one spawned at the origin. Built on first access. */
 	ACytraBoard* GetOrCreateBoard();
 
+	/** Null until the board is built. */
+	const ACytraBoard* GetBoard() const { return Board; }
+
 	/** Null if the data files could not be loaded. */
 	const FCytraMatch* GetMatch() const { return Match.Get(); }
 
 	/** Player order: launch the next wave now. */
 	void LaunchWave();
+
+	/** Player order on a cell: pays for it and queues its job, or reports why it is refused. */
+	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
+
+	/** Frames the selected cell on the board, or hides the frame. */
+	void ShowSelection(const TOptional<FIntPoint>& Cell);
 
 	/** Development cheat: kills every enemy on the map, paying their gold. */
 	void KillAllEnemies();
@@ -74,20 +85,33 @@ private:
 	void SyncEnemies();
 	ACytraEnemy* SpawnEnemy(FName Type);
 
+	/** Spawns and moves worker actors to match the simulation. */
+	void SyncWorkers();
+
 	UPROPERTY(Transient)
 	TObjectPtr<ACytraBoard> Board;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ACytraNest> Nest;
 
+	UPROPERTY(Transient)
+	TObjectPtr<ACytraMarkers> Markers;
+
 	/** Enemy actors by simulation id. */
 	UPROPERTY(Transient)
 	TMap<int32, TObjectPtr<ACytraEnemy>> EnemyActors;
+
+	/** Worker actors by simulation id. */
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<ACytraWorker>> WorkerActors;
 
 	TUniquePtr<FCytraMatch> Match;
 	FCytraLooks Looks;
 	/** Enemy types already reported as having no look. */
 	TSet<FName> EnemiesWithoutLook;
+
+	/** Set when an access may have opened or the jobs changed: the board redraws its marks. */
+	bool bGridChanged = true;
 
 	/** Game time not simulated yet, less than one step. */
 	double StepAccumulator = 0.0;

@@ -113,7 +113,7 @@ Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs
 - `Source/<Nom>/World/` : `ACytraBoard` (génère le plateau depuis la carte, en instanced static meshes), `ACytraEnemy`, `ACytraWorker`, `ACytraTower`, `ACytraProjectile`, `ACytraNest`.
 - `Source/<Nom>/UI/` : interface écrite en C++ (Slate, ou UMG construit en C++), sans Widget Blueprint.
 - `Source/<Nom>/Tests/` : tests d'automatisation.
-- `Content/Data/` : carte, vagues et équilibrage en JSON, apparence provisoire des ennemis (`Looks.json`), textes affichés (`Text/CytraText.csv`, table de chaînes). Ce dossier est ajouté aux dossiers non-assets à empaqueter.
+- `Content/Data/` : carte, vagues et équilibrage en JSON, apparence provisoire des ennemis et des ouvriers (`Looks.json`), textes affichés (`Text/CytraText.csv`, table de chaînes). Ce dossier est ajouté aux dossiers non-assets à empaqueter. Une spécialité ou un chantier ajouté aux données demande aussi ses textes dans `CytraText.csv` : le test `Cytra.UI.Text.DataKeys` signale ceux qui manquent.
 - Entrées : Enhanced Input, actions et contexte créés en C++.
 - Vitesse ×1, ×2, ×3 par dilatation globale du temps. Pause par mise en pause du jeu, les ordres restant possibles en pause.
 

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Rules/CytraBalance.h"
+#include "Rules/CytraCrew.h"
+#include "Rules/CytraGrid.h"
 #include "Rules/CytraMapDef.h"
 #include "Rules/CytraMatchPhase.h"
 #include "Rules/CytraRoutePath.h"
@@ -35,6 +37,8 @@ enum class ECytraMatchEventType : uint8
 	Leak,
 	/** A wave other than the last was cleared. */
 	WaveCleared,
+	/** A worker finished a job. */
+	JobDone,
 };
 
 struct FCytraMatchEvent
@@ -47,6 +51,11 @@ struct FCytraMatchEvent
 	/** WaveCleared: the wave number (1-based) and the bonus earned. */
 	int32 Wave = 0;
 	int32 Gold = 0;
+	/** JobDone: the job kind, its work id or tower type, its cell, and the tower slots it gave access to. */
+	ECytraOrderKind Job = ECytraOrderKind::Work;
+	FName Work;
+	FIntPoint Cell = FIntPoint::ZeroValue;
+	int32 OpenedSlots = 0;
 };
 
 struct FCytraLaunchResult
@@ -74,6 +83,12 @@ public:
 	/** Hits an enemy. At 0 hit points it dies and pays its gold. Unknown or dead enemies are ignored. */
 	void DamageEnemy(int32 EnemyId, double Damage);
 
+	/** Whether the order is accepted now, or the first reason it is refused. */
+	FCytraOrderCheck CheckOrder(const FIntPoint& Cell, const FCytraOrderAction& Action) const;
+
+	/** Pays for the order and queues its job, which takes the nearest free worker of its specialty. */
+	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
+
 	/** Events since the last call, oldest first. */
 	TArray<FCytraMatchEvent> ConsumeEvents();
 
@@ -92,6 +107,13 @@ public:
 	int32 GetKills() const { return Kills; }
 	double GetTime() const { return Time; }
 
+	const FCytraGrid& GetGrid() const { return Grid; }
+	const TArray<FCytraWorker>& GetWorkers() const { return Workers; }
+	/** Jobs in order of command. */
+	const TArray<FCytraJob>& GetJobs() const { return Jobs; }
+	const FCytraJob* FindJobAt(const FIntPoint& Cell) const;
+	const FCytraWorker* FindWorker(int32 WorkerId) const;
+
 	const FCytraMapDef& GetMap() const { return Map; }
 	const FCytraBalance& GetBalance() const { return Balance; }
 	const FCytraWaveSchedule& GetWaves() const { return Waves; }
@@ -101,10 +123,28 @@ private:
 	void Spawn(const FCytraSpawn& Entry);
 	void MoveEnemies(double Dt);
 
+	void AddWorker(FName Role);
+	void StepWorkers(double Dt);
+	/** Gives waiting jobs a worker, sends idle miners to the mine and everyone else back to the nearest camp. */
+	void Manage();
+	/** Starts a worker on Path. A worker between two cells first walks back to the centre of its own. */
+	void Go(FCytraWorker& Worker, TArray<FIntPoint> Path, ECytraWorkerState State) const;
+	/** Shortest path from the cell a worker stands on. */
+	TOptional<TArray<FIntPoint>> PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const;
+	void Finish(int32 JobIndex, FCytraWorker& Worker);
+	int32 MinersAtMine() const;
+	FCytraJob* FindJob(int32 JobId);
+
 	FCytraMapDef Map;
 	FCytraBalance Balance;
 	FCytraWaveSchedule Waves;
 	TArray<FCytraRoutePath> Routes;
+	/** Specialty that opens the mine, and the only one that works it. */
+	FName MineRole;
+
+	FCytraGrid Grid;
+	TArray<FCytraWorker> Workers;
+	TArray<FCytraJob> Jobs;
 
 	FCytraWallet Wallet;
 	int32 Eggs = 0;
@@ -119,5 +159,6 @@ private:
 	TArray<FCytraEnemy> Enemies;
 	TArray<FCytraMatchEvent> Events;
 	int32 Kills = 0;
+	/** Shared by workers, jobs and enemies, as in the prototype. */
 	int32 NextId = 0;
 };

@@ -32,6 +32,15 @@ void ACytraGameState::UpdateFromMatch(const FCytraMatch& Match)
 	Set(EarlyLaunchBonus, Countdown.IsSet() ? Match.GetBalance().EarlyLaunchBonus(Countdown.GetValue()) : 0);
 	Set(EnemiesLeft, Match.GetEnemies().Num() + Match.GetPendingSpawns());
 
+	uint32 Jobs = GetTypeHash(Match.GetJobs().Num());
+	for (const FCytraJob& Job : Match.GetJobs())
+	{
+		const FCytraWorker* Worker = Match.FindWorker(Job.Worker);
+		Jobs = HashCombineFast(Jobs, HashCombineFast(GetTypeHash(Job.Id), GetTypeHash(Job.Worker)));
+		Jobs = HashCombineFast(Jobs, GetTypeHash(Worker ? static_cast<uint8>(Worker->State) : MAX_uint8));
+	}
+	Set(JobsSignature, Jobs);
+
 	if (bChanged)
 	{
 		OnMatchChanged.Broadcast();
