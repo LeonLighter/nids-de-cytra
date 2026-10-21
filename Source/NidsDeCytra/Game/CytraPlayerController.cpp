@@ -15,7 +15,8 @@
 
 ACytraPlayerController::ACytraPlayerController()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// The controller must tick: Enhanced Input evaluates its actions in PlayerTick.
+	PrimaryActorTick.bCanEverTick = true;
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
@@ -92,7 +93,7 @@ void ACytraPlayerController::HandleClick()
 	}
 	if (const TOptional<FIntPoint> Cell = Board->CellUnderRay(Origin, Direction))
 	{
-		UE_LOG(LogCytra, Log, TEXT("Input: click on cell (%d,%d)"), Cell->X, Cell->Y);
+		UE_LOG(LogCytra, Verbose, TEXT("Input: click on cell (%d,%d)"), Cell->X, Cell->Y);
 		SelectCell(Cell);
 	}
 }
