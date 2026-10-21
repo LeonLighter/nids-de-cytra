@@ -100,6 +100,15 @@ void ACytraPlayerController::SelectCell(const TOptional<FIntPoint>& Cell)
 	OnSelectionChanged.Broadcast();
 }
 
+void ACytraPlayerController::OrderOnSelection(const FCytraOrderAction& Action)
+{
+	ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>();
+	if (GameMode && SelectedCell)
+	{
+		GameMode->Order(*SelectedCell, Action);
+	}
+}
+
 void ACytraPlayerController::LaunchWave()
 {
 	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())

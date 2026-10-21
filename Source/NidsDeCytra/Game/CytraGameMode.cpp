@@ -152,6 +152,27 @@ void ACytraGameMode::LaunchWave()
 	SyncView();
 }
 
+FCytraOrderResult ACytraGameMode::Order(const FIntPoint& Cell, const FCytraOrderAction& Action)
+{
+	if (!Match)
+	{
+		return FCytraOrderResult();
+	}
+	const FCytraOrderResult Result = Match->Order(Cell, Action);
+	if (Result.IsAccepted())
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: order %s at (%d,%d), -%d gold%s"), *Action.Id.ToString(), Cell.X, Cell.Y,
+			Result.Check.Spec->Cost, Result.bWaiting ? TEXT(", waiting for a worker") : TEXT(""));
+	}
+	else
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: order %s at (%d,%d) refused (%d)"), *Action.Id.ToString(), Cell.X, Cell.Y, static_cast<int32>(Result.Check.Refusal));
+	}
+	bGridChanged = true;
+	SyncView();
+	return Result;
+}
+
 void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
 {
 	if (Markers && Board)

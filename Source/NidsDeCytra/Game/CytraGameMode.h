@@ -48,6 +48,9 @@ public:
 	/** Player order: launch the next wave now. */
 	void LaunchWave();
 
+	/** Player order on a cell: pays for it and queues its job, or reports why it is refused. */
+	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
+
 	/** Frames the selected cell on the board, or hides the frame. */
 	void ShowSelection(const TOptional<FIntPoint>& Cell);
 

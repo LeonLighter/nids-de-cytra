@@ -7,36 +7,24 @@
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/SizeBox.h"
+#include "Components/Spacer.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/World.h"
 #include "Game/CytraGameState.h"
 #include "Game/CytraPlayerController.h"
+#include "UI/CytraLayout.h"
+#include "UI/CytraOrderPanel.h"
+#include "UI/CytraPalette.h"
 #include "UI/CytraText.h"
-#include "World/CytraShapes.h"
 
 namespace
 {
-	using CytraShapes::FromHex;
-
-	/** Palette of the web prototype. Built on first use: sRGB conversion is not available during static initialization. */
-	struct FPalette
+	const FCytraPalette& Palette()
 	{
-		FLinearColor Rock950 = FromHex(TEXT("10141b"));
-		FLinearColor Rock900 = FromHex(TEXT("171c25"));
-		FLinearColor Rock700 = FromHex(TEXT("2a3340"));
-		FLinearColor Snow = FromHex(TEXT("e9eef4"));
-		FLinearColor Mist = FromHex(TEXT("9ca8b8"));
-		FLinearColor Ember = FromHex(TEXT("f0a04b"));
-		FLinearColor Gold = FromHex(TEXT("f2cf63"));
-		FLinearColor Silk = FromHex(TEXT("bba8ea"));
-	};
-
-	const FPalette& Palette()
-	{
-		static const FPalette Instance;
-		return Instance;
+		return FCytraPalette::Get();
 	}
 }
 
@@ -75,6 +63,23 @@ void UCytraHudWidget::NativeOnInitialized()
 	LaunchButton->SetContent(LaunchLabel);
 	UHorizontalBoxSlot* ButtonSlot = Row->AddChildToHorizontalBox(LaunchButton);
 	ButtonSlot->SetVerticalAlignment(VAlign_Center);
+
+	// Under the bar, the order panel on the right; the camera keeps the board clear of both.
+	UHorizontalBox* Below = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("Below"));
+	UVerticalBoxSlot* BelowSlot = Root->AddChildToVerticalBox(Below);
+	BelowSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	Below->AddChildToHorizontalBox(WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass()))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+
+	constexpr float PanelMargin = 12.0f;
+	USizeBox* PanelBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("PanelBox"));
+	PanelBox->SetWidthOverride(CytraLayout::PanelWidth - 2.0f * PanelMargin);
+	if (UCytraOrderPanel* Panel = CreateWidget<UCytraOrderPanel>(GetOwningPlayer(), UCytraOrderPanel::StaticClass()))
+	{
+		PanelBox->SetContent(Panel);
+	}
+	UHorizontalBoxSlot* PanelSlot = Below->AddChildToHorizontalBox(PanelBox);
+	PanelSlot->SetPadding(FMargin(PanelMargin, 0.0f, PanelMargin, PanelMargin));
+	PanelSlot->SetVerticalAlignment(VAlign_Top);
 }
 
 UTextBlock* UCytraHudWidget::AddStat(UHorizontalBox* Row, const TCHAR* LabelKey, const FLinearColor& ValueColor)

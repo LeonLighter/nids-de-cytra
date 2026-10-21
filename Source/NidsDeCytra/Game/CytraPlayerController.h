@@ -9,6 +9,7 @@
 class UCytraHudWidget;
 class UInputAction;
 class UInputMappingContext;
+struct FCytraOrderAction;
 
 DECLARE_MULTICAST_DELEGATE(FOnCytraSelectionChanged);
 
@@ -23,6 +24,9 @@ public:
 
 	/** Order from the interface: launch the next wave now. */
 	void LaunchWave();
+
+	/** Order from the interface on the selected cell. */
+	void OrderOnSelection(const FCytraOrderAction& Action);
 
 	/** Selects a cell of the board, or clears the selection. */
 	void SelectCell(const TOptional<FIntPoint>& Cell);
