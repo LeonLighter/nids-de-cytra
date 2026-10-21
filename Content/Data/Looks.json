@@ -1,0 +1,8 @@
+{
+  "enemies": {
+    "Bandit": { "shape": "Sphere", "color": "a9814e", "size": 0.35 },
+    "Adventurer": { "shape": "Sphere", "color": "6f9fd8", "size": 0.3 },
+    "Soldier": { "shape": "Cube", "color": "2c2731", "size": 0.5 },
+    "Captain": { "shape": "Cube", "color": "c0353d", "size": 0.75 }
+  }
+}

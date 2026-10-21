@@ -19,6 +19,8 @@
 #include "Rules/CytraBalanceLoader.h"
 #include "Rules/CytraWaveLoader.h"
 #include "World/CytraBoard.h"
+#include "World/CytraEnemy.h"
+#include "World/CytraNest.h"
 
 #if !UE_BUILD_SHIPPING
 namespace
@@ -113,6 +115,18 @@ bool ACytraGameMode::CreateMatch()
 	}
 
 	Match = MakeUnique<FCytraMatch>(Board->GetMap(), Balance, Waves);
+
+	// Without looks the match still runs, with the default shape.
+	if (!FCytraLooks::LoadFromFile(FPaths::ProjectContentDir() / LooksFile, Looks, Error))
+	{
+		UE_LOG(LogCytra, Error, TEXT("Match: cannot load looks: %s"), *Error);
+	}
+
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	const FIntPoint NestCell = Board->GetMap().Nest;
+	const FVector NestLocation = Board->CellToWorld(NestCell) + FVector(0.0f, 0.0f, Board->GetTileHeight(Board->GetMap().Get(NestCell)));
+	Nest = GetWorld()->SpawnActor<ACytraNest>(NestLocation, FRotator::ZeroRotator, Params);
 	StepAccumulator = 0.0;
 	LastPhase = Match->GetPhase();
 	LastWave = Match->GetWave();
@@ -161,10 +175,69 @@ void ACytraGameMode::SyncView()
 		return;
 	}
 	LogEvents();
+	SyncEnemies();
+	if (Nest)
+	{
+		Nest->SetEggs(Match->GetEggs(), ACytraBoard::CellSize);
+	}
 	if (ACytraGameState* CytraState = GetGameState<ACytraGameState>())
 	{
 		CytraState->UpdateFromMatch(*Match);
 	}
+}
+
+void ACytraGameMode::SyncEnemies()
+{
+	const float RoadHeight = Board->GetTileHeight(ECytraTileType::Road);
+	TSet<int32> Alive;
+	for (const FCytraEnemy& Enemy : Match->GetEnemies())
+	{
+		if (Enemy.bDead)
+		{
+			continue;
+		}
+		Alive.Add(Enemy.Id);
+		TObjectPtr<ACytraEnemy>& Actor = EnemyActors.FindOrAdd(Enemy.Id);
+		if (!Actor)
+		{
+			Actor = SpawnEnemy(Enemy.Type);
+		}
+		if (Actor)
+		{
+			Actor->SetActorLocation(Board->GridToWorld(Enemy.Position) + FVector(0.0f, 0.0f, RoadHeight));
+		}
+	}
+
+	for (auto It = EnemyActors.CreateIterator(); It; ++It)
+	{
+		if (!Alive.Contains(It.Key()))
+		{
+			if (It.Value())
+			{
+				It.Value()->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
+}
+
+ACytraEnemy* ACytraGameMode::SpawnEnemy(FName Type)
+{
+	if (!Looks.Enemies.Contains(Type) && !EnemiesWithoutLook.Contains(Type))
+	{
+		EnemiesWithoutLook.Add(Type);
+		UE_LOG(LogCytra, Warning, TEXT("Match: no look for enemy %s in %s, using the default shape"), *Type.ToString(), *LooksFile);
+	}
+
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	ACytraEnemy* Actor = GetWorld()->SpawnActor<ACytraEnemy>(Params);
+	if (Actor)
+	{
+		Actor->SetLook(Looks.EnemyLook(Type), ACytraBoard::CellSize);
+	}
+	return Actor;
 }
 
 void ACytraGameMode::LogEvents()

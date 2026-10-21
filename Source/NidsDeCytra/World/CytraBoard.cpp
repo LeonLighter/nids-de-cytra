@@ -17,10 +17,16 @@ namespace
 	/** Basic shapes are 100 units wide. */
 	constexpr float ShapeSize = 100.0f;
 
-	/** Centre of a cell in board space: grid x along +Y, grid y along -X. */
+	/** A grid position in board space: grid x along +Y, grid y along -X. */
+	FVector GridToLocal(const FVector2d& Position)
+	{
+		return FVector(-Position.Y * ACytraBoard::CellSize, Position.X * ACytraBoard::CellSize, 0.0f);
+	}
+
+	/** Centre of a cell in board space. */
 	FVector CellToLocal(const FIntPoint& Cell)
 	{
-		return FVector(-Cell.Y * ACytraBoard::CellSize, Cell.X * ACytraBoard::CellSize, 0.0f);
+		return GridToLocal(FVector2d(Cell.X, Cell.Y));
 	}
 
 	FLinearColor FromHex(const TCHAR* Hex)
@@ -150,6 +156,11 @@ float ACytraBoard::GetTileHeight(ECytraTileType Type) const
 FVector ACytraBoard::CellToWorld(const FIntPoint& Cell) const
 {
 	return GetActorTransform().TransformPosition(CellToLocal(Cell));
+}
+
+FVector ACytraBoard::GridToWorld(const FVector2d& Position) const
+{
+	return GetActorTransform().TransformPosition(GridToLocal(Position));
 }
 
 FBox ACytraBoard::GetBoardBounds() const

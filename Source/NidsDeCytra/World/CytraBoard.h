@@ -33,6 +33,12 @@ public:
 	/** World position of the centre of a cell, at ground level. */
 	FVector CellToWorld(const FIntPoint& Cell) const;
 
+	/** World position of a fractional grid position, at ground level. Cell centres are at whole coordinates. */
+	FVector GridToWorld(const FVector2d& Position) const;
+
+	/** Height of the top of a tile type, in world units above ground level. */
+	float GetTileHeight(ECytraTileType Type) const;
+
 	/** World-space box covering every tile. Invalid if the board is not built. */
 	FBox GetBoardBounds() const;
 
@@ -65,7 +71,6 @@ protected:
 
 private:
 	UInstancedStaticMeshComponent* GetOrCreateTileComponent(ECytraTileType Type);
-	float GetTileHeight(ECytraTileType Type) const;
 
 	FCytraMapDef Map;
 	bool bBuilt = false;
