@@ -36,6 +36,12 @@ public:
 	/** World position of a fractional grid position, at ground level. Cell centres are at whole coordinates. */
 	FVector GridToWorld(const FVector2d& Position) const;
 
+	/** The cell under a world position, ignoring height. Unset outside the board. */
+	TOptional<FIntPoint> WorldToCell(const FVector& World) const;
+
+	/** The cell whose top a ray hits first, for mouse picking. Unset outside the board. */
+	TOptional<FIntPoint> CellUnderRay(const FVector& Origin, const FVector& Direction) const;
+
 	/** Height of the top of a tile type, in world units above ground level. */
 	float GetTileHeight(ECytraTileType Type) const;
 

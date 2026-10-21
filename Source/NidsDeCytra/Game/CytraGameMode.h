@@ -10,6 +10,7 @@
 
 class ACytraBoard;
 class ACytraEnemy;
+class ACytraMarkers;
 class ACytraNest;
 
 /**
@@ -37,11 +38,17 @@ public:
 	/** The board placed in the level, or a new one spawned at the origin. Built on first access. */
 	ACytraBoard* GetOrCreateBoard();
 
+	/** Null until the board is built. */
+	const ACytraBoard* GetBoard() const { return Board; }
+
 	/** Null if the data files could not be loaded. */
 	const FCytraMatch* GetMatch() const { return Match.Get(); }
 
 	/** Player order: launch the next wave now. */
 	void LaunchWave();
+
+	/** Frames the selected cell on the board, or hides the frame. */
+	void ShowSelection(const TOptional<FIntPoint>& Cell);
 
 	/** Development cheat: kills every enemy on the map, paying their gold. */
 	void KillAllEnemies();
@@ -79,6 +86,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ACytraNest> Nest;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ACytraMarkers> Markers;
 
 	/** Enemy actors by simulation id. */
 	UPROPERTY(Transient)

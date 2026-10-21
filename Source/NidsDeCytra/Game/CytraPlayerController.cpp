@@ -2,9 +2,15 @@
 
 #include "Game/CytraPlayerController.h"
 
+#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "Game/CytraGameMode.h"
+#include "InputAction.h"
+#include "InputMappingContext.h"
 #include "UI/CytraHudWidget.h"
+#include "World/CytraBoard.h"
 
 ACytraPlayerController::ACytraPlayerController()
 {
@@ -24,6 +30,12 @@ void ACytraPlayerController::BeginPlay()
 	InputMode.SetHideCursorDuringCapture(false);
 	SetInputMode(InputMode);
 
+	CreateInputObjects();
+	if (UEnhancedInputLocalPlayerSubsystem* Input = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		Input->AddMappingContext(InputContext, 0);
+	}
+
 	if (IsLocalController())
 	{
 		Hud = CreateWidget<UCytraHudWidget>(this, UCytraHudWidget::StaticClass());
@@ -32,6 +44,60 @@ void ACytraPlayerController::BeginPlay()
 			Hud->AddToViewport();
 		}
 	}
+}
+
+void ACytraPlayerController::CreateInputObjects()
+{
+	if (!ClickAction)
+	{
+		ClickAction = NewObject<UInputAction>(this, TEXT("IA_Select"));
+		ClickAction->ValueType = EInputActionValueType::Boolean;
+	}
+	if (!InputContext)
+	{
+		InputContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Cytra"));
+		InputContext->MapKey(ClickAction, EKeys::LeftMouseButton);
+	}
+}
+
+void ACytraPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+	CreateInputObjects();
+	if (UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		Input->BindAction(ClickAction, ETriggerEvent::Started, this, &ACytraPlayerController::HandleClick);
+	}
+}
+
+void ACytraPlayerController::HandleClick()
+{
+	ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>();
+	const ACytraBoard* Board = GameMode ? GameMode->GetBoard() : nullptr;
+	FVector Origin;
+	FVector Direction;
+	if (!Board || !DeprojectMousePositionToWorld(Origin, Direction))
+	{
+		return;
+	}
+	if (const TOptional<FIntPoint> Cell = Board->CellUnderRay(Origin, Direction))
+	{
+		SelectCell(Cell);
+	}
+}
+
+void ACytraPlayerController::SelectCell(const TOptional<FIntPoint>& Cell)
+{
+	if (Cell == SelectedCell)
+	{
+		return;
+	}
+	SelectedCell = Cell;
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->ShowSelection(SelectedCell);
+	}
+	OnSelectionChanged.Broadcast();
 }
 
 void ACytraPlayerController::LaunchWave()

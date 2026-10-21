@@ -156,6 +156,43 @@ FVector ACytraBoard::GridToWorld(const FVector2d& Position) const
 	return GetActorTransform().TransformPosition(GridToLocal(Position));
 }
 
+TOptional<FIntPoint> ACytraBoard::WorldToCell(const FVector& World) const
+{
+	const FVector Local = GetActorTransform().InverseTransformPosition(World);
+	const FIntPoint Cell(FMath::RoundToInt32(Local.Y / CellSize), FMath::RoundToInt32(-Local.X / CellSize));
+	return Map.IsInside(Cell) ? TOptional<FIntPoint>(Cell) : TOptional<FIntPoint>();
+}
+
+TOptional<FIntPoint> ACytraBoard::CellUnderRay(const FVector& Origin, const FVector& Direction) const
+{
+	const FVector Up = GetActorUpVector();
+	const auto HitAtHeight = [&](float Height) -> TOptional<FVector>
+	{
+		const FPlane Plane(GetActorLocation() + Up * Height, Up);
+		const double Denominator = FVector::DotProduct(Direction, Up);
+		if (FMath::IsNearlyZero(Denominator))
+		{
+			return {};
+		}
+		return FMath::RayPlaneIntersection(Origin, Direction, Plane);
+	};
+
+	// Tiles have different heights: aim at ground level, then again at the top of the tile found there.
+	TOptional<FVector> Hit = HitAtHeight(0.0f);
+	TOptional<FIntPoint> Cell = Hit ? WorldToCell(*Hit) : TOptional<FIntPoint>();
+	for (int32 Pass = 0; Pass < 2 && Cell; ++Pass)
+	{
+		Hit = HitAtHeight(GetTileHeight(Map.Get(*Cell)));
+		const TOptional<FIntPoint> Next = Hit ? WorldToCell(*Hit) : TOptional<FIntPoint>();
+		if (!Next || *Next == *Cell)
+		{
+			break;
+		}
+		Cell = Next;
+	}
+	return Cell;
+}
+
 FBox ACytraBoard::GetBoardBounds() const
 {
 	if (!bBuilt)

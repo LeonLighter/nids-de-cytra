@@ -63,6 +63,16 @@ bool FCytraBoardBuildsPasse01Test::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Rock material has a Color parameter"), GetTileColor(FindTiles(*Board, TEXT("Rock")), Rock));
 		TestTrue(TEXT("Road material has a Color parameter"), GetTileColor(FindTiles(*Board, TEXT("Road")), Road));
 		TestNotEqual(TEXT("Rock and road colors differ"), Rock, Road);
+
+		// Picking.
+		const FIntPoint Slot(13, 7);
+		TestEqual(TEXT("World to cell"), Board->WorldToCell(Board->CellToWorld(Slot) + FVector(90.0, -90.0, 0.0)), TOptional<FIntPoint>(Slot));
+		TestFalse(TEXT("Outside the board"), Board->WorldToCell(Board->CellToWorld(FIntPoint(-1, 3))).IsSet());
+		TestEqual(TEXT("Straight down"), Board->CellUnderRay(Board->CellToWorld(Slot) + FVector(0.0, 0.0, 5000.0), FVector(0.0, 0.0, -1.0)), TOptional<FIntPoint>(Slot));
+		// A slanted ray aimed at the top of the slot, near its east edge, crosses ground level in the next cell.
+		const FVector Target = Board->CellToWorld(Slot) + FVector(0.0, 80.0, Board->GetTileHeight(ECytraTileType::Slot));
+		const FVector Direction = FVector(0.0, 2.0, -1.0).GetSafeNormal();
+		TestEqual(TEXT("Slanted ray"), Board->CellUnderRay(Target - Direction * 3000.0, Direction), TOptional<FIntPoint>(Slot));
 	}
 
 	GEngine->DestroyWorldContext(World);

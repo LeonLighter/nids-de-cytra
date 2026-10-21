@@ -20,6 +20,7 @@
 #include "Rules/CytraWaveLoader.h"
 #include "World/CytraBoard.h"
 #include "World/CytraEnemy.h"
+#include "World/CytraMarkers.h"
 #include "World/CytraNest.h"
 
 #if !UE_BUILD_SHIPPING
@@ -127,6 +128,7 @@ bool ACytraGameMode::CreateMatch()
 	const FIntPoint NestCell = Board->GetMap().Nest;
 	const FVector NestLocation = Board->CellToWorld(NestCell) + FVector(0.0f, 0.0f, Board->GetTileHeight(Board->GetMap().Get(NestCell)));
 	Nest = GetWorld()->SpawnActor<ACytraNest>(NestLocation, FRotator::ZeroRotator, Params);
+	Markers = GetWorld()->SpawnActor<ACytraMarkers>(Params);
 	StepAccumulator = 0.0;
 	LastPhase = Match->GetPhase();
 	LastWave = Match->GetWave();
@@ -147,6 +149,14 @@ void ACytraGameMode::LaunchWave()
 		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold"), Result.Bonus);
 	}
 	SyncView();
+}
+
+void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
+{
+	if (Markers && Board)
+	{
+		Markers->ShowSelection(*Board, Cell);
+	}
 }
 
 void ACytraGameMode::KillAllEnemies()
