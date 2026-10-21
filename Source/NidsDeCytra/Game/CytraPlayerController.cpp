@@ -2,6 +2,7 @@
 
 #include "Game/CytraPlayerController.h"
 
+#include "CytraLog.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
@@ -34,6 +35,10 @@ void ACytraPlayerController::BeginPlay()
 	if (UEnhancedInputLocalPlayerSubsystem* Input = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
 		Input->AddMappingContext(InputContext, 0);
+	}
+	else
+	{
+		UE_LOG(LogCytra, Warning, TEXT("Input: no Enhanced Input subsystem, clicks will be ignored"));
 	}
 
 	if (IsLocalController())
@@ -68,6 +73,10 @@ void ACytraPlayerController::SetupInputComponent()
 	{
 		Input->BindAction(ClickAction, ETriggerEvent::Started, this, &ACytraPlayerController::HandleClick);
 	}
+	else
+	{
+		UE_LOG(LogCytra, Warning, TEXT("Input: the input component is not an Enhanced Input component, clicks will be ignored"));
+	}
 }
 
 void ACytraPlayerController::HandleClick()
@@ -78,10 +87,12 @@ void ACytraPlayerController::HandleClick()
 	FVector Direction;
 	if (!Board || !DeprojectMousePositionToWorld(Origin, Direction))
 	{
+		UE_LOG(LogCytra, Warning, TEXT("Input: click ignored, no board or no cursor position"));
 		return;
 	}
 	if (const TOptional<FIntPoint> Cell = Board->CellUnderRay(Origin, Direction))
 	{
+		UE_LOG(LogCytra, Log, TEXT("Input: click on cell (%d,%d)"), Cell->X, Cell->Y);
 		SelectCell(Cell);
 	}
 }

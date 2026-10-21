@@ -32,7 +32,10 @@ void UCytraHudWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
+	// The HUD covers the whole screen: only the bar and the panel may catch clicks, the rest goes through to the board.
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	UVerticalBox* Root = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("Root"));
+	Root->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	WidgetTree->RootWidget = Root;
 
 	UBorder* Bar = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("Bar"));
@@ -66,13 +69,17 @@ void UCytraHudWidget::NativeOnInitialized()
 
 	// Under the bar, the order panel on the right; the camera keeps the board clear of both.
 	UHorizontalBox* Below = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("Below"));
+	Below->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	UVerticalBoxSlot* BelowSlot = Root->AddChildToVerticalBox(Below);
 	BelowSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-	Below->AddChildToHorizontalBox(WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass()))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	USpacer* Spacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass());
+	Spacer->SetVisibility(ESlateVisibility::HitTestInvisible);
+	Below->AddChildToHorizontalBox(Spacer)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
 	constexpr float PanelMargin = 12.0f;
 	USizeBox* PanelBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("PanelBox"));
 	PanelBox->SetWidthOverride(CytraLayout::PanelWidth - 2.0f * PanelMargin);
+	PanelBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	if (UCytraOrderPanel* Panel = CreateWidget<UCytraOrderPanel>(GetOwningPlayer(), UCytraOrderPanel::StaticClass()))
 	{
 		PanelBox->SetContent(Panel);
