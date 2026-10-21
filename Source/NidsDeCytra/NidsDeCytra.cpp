@@ -2,5 +2,20 @@
 
 #include "NidsDeCytra.h"
 #include "Modules/ModuleManager.h"
+#include "UI/CytraText.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, NidsDeCytra, "NidsDeCytra" );
+class FNidsDeCytraModule : public FDefaultGameModuleImpl
+{
+public:
+	virtual void StartupModule() override
+	{
+		CytraText::Register();
+	}
+
+	virtual void ShutdownModule() override
+	{
+		CytraText::Unregister();
+	}
+};
+
+IMPLEMENT_PRIMARY_GAME_MODULE( FNidsDeCytraModule, NidsDeCytra, "NidsDeCytra" );

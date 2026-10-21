@@ -1,0 +1,29 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+
+/** Placeholder appearance: an engine basic shape and a flat color. Sizes are in cells. */
+struct FCytraLook
+{
+	/** Sphere, Cube, Cylinder or Cone, from /Engine/BasicShapes. */
+	FName Shape = TEXT("Sphere");
+	FLinearColor Color = FLinearColor(0.5f, 0.5f, 0.5f);
+	double Size = 0.35;
+};
+
+/** Appearance of game objects, read from Content/Data/Looks.json. Display only: the rules never read it. */
+struct NIDSDECYTRA_API FCytraLooks
+{
+	static const TCHAR* const Shapes[4];
+
+	TMap<FName, FCytraLook> Enemies;
+
+	/** The look of an enemy type, or the default look if the file has none. */
+	const FCytraLook& EnemyLook(FName Enemy) const;
+
+	/** On failure, OutError says why and OutLooks is left unspecified. */
+	static bool ParseJson(const FString& Json, FCytraLooks& OutLooks, FString& OutError);
+	static bool LoadFromFile(const FString& Path, FCytraLooks& OutLooks, FString& OutError);
+};

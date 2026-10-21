@@ -2,6 +2,10 @@
 
 #include "Game/CytraPlayerController.h"
 
+#include "Engine/World.h"
+#include "Game/CytraGameMode.h"
+#include "UI/CytraHudWidget.h"
+
 ACytraPlayerController::ACytraPlayerController()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -19,4 +23,21 @@ void ACytraPlayerController::BeginPlay()
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetHideCursorDuringCapture(false);
 	SetInputMode(InputMode);
+
+	if (IsLocalController())
+	{
+		Hud = CreateWidget<UCytraHudWidget>(this, UCytraHudWidget::StaticClass());
+		if (Hud)
+		{
+			Hud->AddToViewport();
+		}
+	}
+}
+
+void ACytraPlayerController::LaunchWave()
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->LaunchWave();
+	}
 }

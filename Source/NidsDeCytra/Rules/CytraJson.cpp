@@ -91,12 +91,21 @@ namespace CytraJson
 		return true;
 	}
 
+	bool FReader::String(const TCHAR* Field, FString& Out) const
+	{
+		if (!Obj.TryGetStringField(Field, Out) || Out.IsEmpty())
+		{
+			return Fail(Field, TEXT("missing string"));
+		}
+		return true;
+	}
+
 	bool FReader::Name(const TCHAR* Field, FName& Out) const
 	{
 		FString Value;
-		if (!Obj.TryGetStringField(Field, Value) || Value.IsEmpty())
+		if (!String(Field, Value))
 		{
-			return Fail(Field, TEXT("missing string"));
+			return false;
 		}
 		Out = FName(*Value);
 		return true;
