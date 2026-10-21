@@ -5,18 +5,10 @@
 #include "CoreMinimal.h"
 #include "Rules/CytraBalance.h"
 #include "Rules/CytraMapDef.h"
+#include "Rules/CytraMatchPhase.h"
 #include "Rules/CytraRoutePath.h"
 #include "Rules/CytraWallet.h"
 #include "Rules/CytraWaveSchedule.h"
-
-enum class ECytraMatchPhase : uint8
-{
-	/** Between waves. Before wave 1 there is no countdown: the player launches it. */
-	Prep,
-	Wave,
-	Won,
-	Lost,
-};
 
 /** An enemy walking its route. Positions are in grid cells. */
 struct FCytraEnemy
