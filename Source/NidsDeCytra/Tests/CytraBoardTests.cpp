@@ -5,15 +5,16 @@
 #include "Engine/World.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
+#include "Rules/CytraCrew.h"
+#include "Rules/CytraGrid.h"
 #include "World/CytraBoard.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
-	UInstancedStaticMeshComponent* FindTiles(ACytraBoard& Board, const TCHAR* TypeName)
+	UInstancedStaticMeshComponent* FindComponent(ACytraBoard& Board, const FName Name)
 	{
-		const FName Name(FString::Printf(TEXT("Tiles_%s"), TypeName));
 		for (UInstancedStaticMeshComponent* Component : TInlineComponentArray<UInstancedStaticMeshComponent*>(&Board))
 		{
 			if (Component->GetFName() == Name)
@@ -22,6 +23,17 @@ namespace
 			}
 		}
 		return nullptr;
+	}
+
+	UInstancedStaticMeshComponent* FindTiles(ACytraBoard& Board, const TCHAR* TypeName)
+	{
+		return FindComponent(Board, FName(FString::Printf(TEXT("Tiles_%s"), TypeName)));
+	}
+
+	int32 CountInstances(ACytraBoard& Board, const TCHAR* Name)
+	{
+		const UInstancedStaticMeshComponent* Component = FindComponent(Board, Name);
+		return Component ? Component->GetInstanceCount() : 0;
 	}
 
 	bool GetTileColor(UInstancedStaticMeshComponent* Component, FLinearColor& OutColor)
@@ -46,7 +58,7 @@ bool FCytraBoardBuildsPasse01Test::RunTest(const FString& Parameters)
 		int32 Instances = 0;
 		for (UInstancedStaticMeshComponent* Component : TInlineComponentArray<UInstancedStaticMeshComponent*>(Board))
 		{
-			Instances += Component->GetInstanceCount();
+			Instances += Component->GetName().StartsWith(TEXT("Tiles_")) ? Component->GetInstanceCount() : 0;
 		}
 		TestEqual(TEXT("One instance per cell"), Instances, 24 * 14);
 		TestEqual(TEXT("Rock instances"), FindTiles(*Board, TEXT("Rock")) ? FindTiles(*Board, TEXT("Rock"))->GetInstanceCount() : 0, Board->GetMap().Count(ECytraTileType::Rock));
@@ -73,6 +85,27 @@ bool FCytraBoardBuildsPasse01Test::RunTest(const FString& Parameters)
 		const FVector Target = Board->CellToWorld(Slot) + FVector(0.0, 80.0, Board->GetTileHeight(ECytraTileType::Slot));
 		const FVector Direction = FVector(0.0, 2.0, -1.0).GetSafeNormal();
 		TestEqual(TEXT("Slanted ray"), Board->CellUnderRay(Target - Direction * 3000.0, Direction), TOptional<FIntPoint>(Slot));
+
+		// Slot rings follow the reachable area; opened accesses change look.
+		FCytraGrid Grid(Board->GetMap());
+		const TArray<FCytraJob> NoJobs;
+		Board->SyncGrid(Grid, NoJobs);
+		TestEqual(TEXT("Reachable rings at start"), CountInstances(*Board, TEXT("SlotRing_Reachable")), 5);
+		TestEqual(TEXT("Cut-off rings at start"), CountInstances(*Board, TEXT("SlotRing_CutOff")), 8);
+
+		Grid.Open(FIntPoint(9, 6));
+		Grid.Open(FIntPoint(13, 8));
+		Board->SyncGrid(Grid, NoJobs);
+		Board->SyncGrid(Grid, NoJobs);
+		TestEqual(TEXT("Reachable rings after bridge and clearing"), CountInstances(*Board, TEXT("SlotRing_Reachable")), 8);
+		TestEqual(TEXT("Cut-off rings after bridge and clearing"), CountInstances(*Board, TEXT("SlotRing_CutOff")), 5);
+		TestEqual(TEXT("One bridge, drawn once"), CountInstances(*Board, TEXT("Bridge")), 1);
+		TestEqual(TEXT("One cleared tile"), CountInstances(*Board, TEXT("Opened_Rubble")), 1);
+
+		FCytraJob Job;
+		Job.Cell = FIntPoint(13, 7);
+		Board->SyncGrid(Grid, { Job });
+		TestEqual(TEXT("No ring on a slot with a job"), CountInstances(*Board, TEXT("SlotRing_Reachable")), 7);
 	}
 
 	GEngine->DestroyWorldContext(World);

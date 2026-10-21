@@ -29,6 +29,11 @@ bool FCytraLooksLoadsLooksTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(FString::Printf(TEXT("%s has a look"), *Enemy.Key.ToString()), Looks.Enemies.Contains(Enemy.Key));
 	}
+	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
+	{
+		TestTrue(FString::Printf(TEXT("%s has a look"), *Role.Key.ToString()), Looks.Workers.Contains(Role.Key));
+	}
+	TestTrue(TEXT("Carpenter color"), Looks.WorkerLook(TEXT("Carpenter")).Color.Equals(FLinearColor::FromSRGBColor(FColor(0xd1, 0x7f, 0x45))));
 
 	const FCytraLook& Bandit = Looks.EnemyLook(TEXT("Bandit"));
 	TestEqual(TEXT("Bandit shape"), Bandit.Shape, FName(TEXT("Sphere")));
@@ -57,6 +62,8 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 		{ TEXT("Zero size"), TEXT(R"({"enemies":{"Bandit":{"shape":"Cube","color":"a9814e","size":0}}})"), TEXT("enemies.Bandit.size") },
 		{ TEXT("Missing size"), TEXT(R"({"enemies":{"Bandit":{"shape":"Cube","color":"a9814e"}}})"), TEXT("enemies.Bandit.size") },
 		{ TEXT("No enemies section"), TEXT(R"({})"), TEXT("enemies") },
+		{ TEXT("No workers section"), TEXT(R"({"enemies":{}})"), TEXT("workers") },
+		{ TEXT("Bad worker"), TEXT(R"({"enemies":{},"workers":{"Miner":{"shape":"Cube","color":"e3b341","size":-1}}})"), TEXT("workers.Miner.size") },
 	};
 	for (const FCase& Case : Cases)
 	{
@@ -68,7 +75,7 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 
 	FCytraLooks Looks;
 	FString Error;
-	TestTrue(TEXT("Leading # accepted"), FCytraLooks::ParseJson(TEXT(R"({"enemies":{"Bandit":{"shape":"Cone","color":"#A9814E","size":0.4}}})"), Looks, Error));
+	TestTrue(TEXT("Leading # accepted"), FCytraLooks::ParseJson(TEXT(R"({"enemies":{"Bandit":{"shape":"Cone","color":"#A9814E","size":0.4}},"workers":{}})"), Looks, Error));
 	return true;
 }
 

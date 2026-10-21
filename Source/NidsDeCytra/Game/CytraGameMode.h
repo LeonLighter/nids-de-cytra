@@ -12,6 +12,7 @@ class ACytraBoard;
 class ACytraEnemy;
 class ACytraMarkers;
 class ACytraNest;
+class ACytraWorker;
 
 /**
  * Runs the match: owns the rules simulation, advances it in fixed steps and relays player orders to it.
@@ -81,6 +82,9 @@ private:
 	void SyncEnemies();
 	ACytraEnemy* SpawnEnemy(FName Type);
 
+	/** Spawns and moves worker actors to match the simulation. */
+	void SyncWorkers();
+
 	UPROPERTY(Transient)
 	TObjectPtr<ACytraBoard> Board;
 
@@ -94,10 +98,17 @@ private:
 	UPROPERTY(Transient)
 	TMap<int32, TObjectPtr<ACytraEnemy>> EnemyActors;
 
+	/** Worker actors by simulation id. */
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<ACytraWorker>> WorkerActors;
+
 	TUniquePtr<FCytraMatch> Match;
 	FCytraLooks Looks;
 	/** Enemy types already reported as having no look. */
 	TSet<FName> EnemiesWithoutLook;
+
+	/** Set when an access may have opened or the jobs changed: the board redraws its marks. */
+	bool bGridChanged = true;
 
 	/** Game time not simulated yet, less than one step. */
 	double StepAccumulator = 0.0;

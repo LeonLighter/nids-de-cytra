@@ -19,9 +19,14 @@ struct NIDSDECYTRA_API FCytraLooks
 	static const TCHAR* const Shapes[4];
 
 	TMap<FName, FCytraLook> Enemies;
+	/** By worker specialty. */
+	TMap<FName, FCytraLook> Workers;
 
 	/** The look of an enemy type, or the default look if the file has none. */
 	const FCytraLook& EnemyLook(FName Enemy) const;
+
+	/** The look of a worker specialty, or the default look if the file has none. */
+	const FCytraLook& WorkerLook(FName Role) const;
 
 	/** On failure, OutError says why and OutLooks is left unspecified. */
 	static bool ParseJson(const FString& Json, FCytraLooks& OutLooks, FString& OutError);

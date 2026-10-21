@@ -5,6 +5,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Rules/CytraCrew.h"
 #include "UObject/ConstructorHelpers.h"
 #include "World/CytraBoard.h"
 #include "World/CytraShapes.h"
@@ -17,6 +18,17 @@ namespace
 	/** World units above the tile top. */
 	constexpr float FrameLift = 3.0f;
 	constexpr float FrameThickness = 4.0f;
+
+	// Job bar of the web prototype: a 32 x 6 pixel back and a 30 x 4 fill, centred 18 pixels above the cell centre.
+	constexpr float BarOffset = 18.0f / 40.0f;
+	constexpr float BarBackLength = 32.0f / 40.0f;
+	constexpr float BarBackWidth = 6.0f / 40.0f;
+	constexpr float BarFillLength = 30.0f / 40.0f;
+	constexpr float BarFillWidth = 4.0f / 40.0f;
+	constexpr float DotSize = 3.0f / 40.0f;
+	constexpr float DotSpacing = 6.0f / 40.0f;
+	/** World height of the bars: above the highest tile, so nothing hides them in the top view. */
+	constexpr float BarHeight = 100.0f;
 }
 
 ACytraMarkers::ACytraMarkers()
@@ -44,6 +56,46 @@ UInstancedStaticMeshComponent* ACytraMarkers::MakeBoxes(FName Name, const TCHAR*
 	}
 	Component->RegisterComponent();
 	return Component;
+}
+
+void ACytraMarkers::ShowJobs(const ACytraBoard& Board, const TArray<FCytraJob>& Jobs)
+{
+	if (!BarBacks)
+	{
+		BarBacks = MakeBoxes(TEXT("BarBacks"), TEXT("10141b"));
+		BarFills = MakeBoxes(TEXT("BarFills"), TEXT("f0a04b"));
+		WaitingMarks = MakeBoxes(TEXT("WaitingMarks"), TEXT("9ca8b8"));
+	}
+	BarBacks->ClearInstances();
+	BarFills->ClearInstances();
+	WaitingMarks->ClearInstances();
+
+	const float Cell = ACytraBoard::CellSize;
+	const float Thin = 2.0f / CytraShapes::Size;
+	for (const FCytraJob& Job : Jobs)
+	{
+		// North of the cell centre is world +X.
+		const FVector Center = Board.CellToWorld(Job.Cell) + FVector(BarOffset * Cell, 0.0f, BarHeight);
+		BarBacks->AddInstance(FTransform(FQuat::Identity, Center, FVector(BarBackWidth * Cell / CytraShapes::Size, BarBackLength * Cell / CytraShapes::Size, Thin)), true);
+
+		const float Ratio = Job.Time > 0.0 ? static_cast<float>(FMath::Min(1.0, Job.Progress / Job.Time)) : 1.0f;
+		if (Ratio > 0.0f)
+		{
+			// The fill grows eastward from the west end of the bar.
+			const float Length = BarFillLength * Ratio * Cell;
+			const FVector FillCenter = Center + FVector(0.0f, (Length - BarFillLength * Cell) * 0.5f, 2.0f);
+			UInstancedStaticMeshComponent* Fill = Job.Worker != 0 ? BarFills.Get() : WaitingMarks.Get();
+			Fill->AddInstance(FTransform(FQuat::Identity, FillCenter, FVector(BarFillWidth * Cell / CytraShapes::Size, Length / CytraShapes::Size, Thin)), true);
+		}
+		if (Job.Worker == 0)
+		{
+			for (int32 i = -1; i <= 1; ++i)
+			{
+				const FVector Dot = Center + FVector(0.0f, i * DotSpacing * Cell, 4.0f);
+				WaitingMarks->AddInstance(FTransform(FQuat::Identity, Dot, FVector(DotSize * Cell / CytraShapes::Size, DotSize * Cell / CytraShapes::Size, Thin)), true);
+			}
+		}
+	}
 }
 
 void ACytraMarkers::ShowSelection(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell)

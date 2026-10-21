@@ -7,9 +7,11 @@
 #include "Rules/CytraMapDef.h"
 #include "CytraBoard.generated.h"
 
+class FCytraGrid;
 class UInstancedStaticMeshComponent;
 class UMaterialInterface;
 class UStaticMesh;
+struct FCytraJob;
 
 /**
  * Draws the map grid with engine basic shapes, one instanced mesh per tile type.
@@ -48,6 +50,12 @@ public:
 	/** World-space box covering every tile. Invalid if the board is not built. */
 	FBox GetBoardBounds() const;
 
+	/**
+	 * Shows the accesses opened so far, and marks each free slot as reachable or cut off from the camp.
+	 * Call it whenever the grid or the jobs may have changed.
+	 */
+	void SyncGrid(const FCytraGrid& Grid, const TArray<FCytraJob>& Jobs);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -70,14 +78,31 @@ protected:
 	TObjectPtr<UStaticMesh> TileMesh;
 
 	UPROPERTY()
+	TObjectPtr<UStaticMesh> DiscMesh;
+
+	UPROPERTY()
 	TObjectPtr<UMaterialInterface> TileMaterial;
 
 	UPROPERTY(Transient)
 	TMap<ECytraTileType, TObjectPtr<UInstancedStaticMeshComponent>> TileComponents;
 
+	/** Bridges, ladders, cleared tiles and slot marks, by name. */
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UInstancedStaticMeshComponent>> OverlayComponents;
+
 private:
 	UInstancedStaticMeshComponent* GetOrCreateTileComponent(ECytraTileType Type);
+	UInstancedStaticMeshComponent* GetOrCreateOverlay(FName Name, UStaticMesh* Mesh, const FLinearColor& Color);
+	UInstancedStaticMeshComponent* CreateInstances(FName Name, UStaticMesh* Mesh, const FLinearColor& Color);
+
+	/** Changes the look of a cell once a job has opened it. */
+	void ShowOpened(const FIntPoint& Cell);
+	/** Instance transform of a box on a cell: Along cells long in the passage direction, Across cells wide. */
+	FTransform CellBox(const FIntPoint& Cell, float Along, float Across, float Bottom, float Height) const;
 
 	FCytraMapDef Map;
 	bool bBuilt = false;
+	/** Tile instance of every openable cell, to hide it once opened. */
+	TMap<FIntPoint, int32> OpenableInstances;
+	TSet<FIntPoint> ShownOpened;
 };

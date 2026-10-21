@@ -1,6 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "World/CytraEnemy.h"
+#include "World/CytraPiece.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "CytraLog.h"
@@ -10,7 +10,7 @@
 #include "World/CytraLooks.h"
 #include "World/CytraShapes.h"
 
-ACytraEnemy::ACytraEnemy()
+ACytraPiece::ACytraPiece()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -29,12 +29,12 @@ ACytraEnemy::ACytraEnemy()
 	BaseMaterial = MaterialFinder.Object;
 }
 
-void ACytraEnemy::SetLook(const FCytraLook& Look, float CellSize)
+void ACytraPiece::SetLook(const FCytraLook& Look, float CellSize)
 {
 	const TObjectPtr<UStaticMesh>* Mesh = ShapeMeshes.Find(Look.Shape);
 	if (!Mesh || !*Mesh || !BaseMaterial)
 	{
-		UE_LOG(LogCytra, Warning, TEXT("Enemy: shape %s or base material not found"), *Look.Shape.ToString());
+		UE_LOG(LogCytra, Warning, TEXT("Piece: shape %s or base material not found"), *Look.Shape.ToString());
 		return;
 	}
 	Body->SetStaticMesh(*Mesh);

@@ -4,5 +4,10 @@
     "Adventurer": { "shape": "Sphere", "color": "6f9fd8", "size": 0.3 },
     "Soldier": { "shape": "Cube", "color": "2c2731", "size": 0.5 },
     "Captain": { "shape": "Cube", "color": "c0353d", "size": 0.75 }
+  },
+  "workers": {
+    "Miner": { "shape": "Cylinder", "color": "e3b341", "size": 0.3 },
+    "Carpenter": { "shape": "Cylinder", "color": "d17f45", "size": 0.3 },
+    "Engineer": { "shape": "Cone", "color": "5cc4cc", "size": 0.3 }
   }
 }
