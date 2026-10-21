@@ -8,12 +8,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "World/CytraLooks.h"
-
-namespace
-{
-	/** Basic shapes are 100 units wide, centred on their origin. */
-	constexpr float ShapeSize = 100.0f;
-}
+#include "World/CytraShapes.h"
 
 ACytraEnemy::ACytraEnemy()
 {
@@ -49,6 +44,6 @@ void ACytraEnemy::SetLook(const FCytraLook& Look, float CellSize)
 	Body->SetMaterial(0, Material);
 
 	const float Size = static_cast<float>(Look.Size) * CellSize;
-	Body->SetRelativeScale3D(FVector(Size / ShapeSize));
+	Body->SetRelativeScale3D(FVector(Size / CytraShapes::Size));
 	Body->SetRelativeLocation(FVector(0.0f, 0.0f, Size * 0.5f));
 }

@@ -9,13 +9,11 @@
 #include "Misc/Paths.h"
 #include "Rules/CytraMapLoader.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/CytraShapes.h"
 
 namespace
 {
 	const FName ColorParameter(TEXT("Color"));
-
-	/** Basic shapes are 100 units wide. */
-	constexpr float ShapeSize = 100.0f;
 
 	/** A grid position in board space: grid x along +Y, grid y along -X. */
 	FVector GridToLocal(const FVector2d& Position)
@@ -27,11 +25,6 @@ namespace
 	FVector CellToLocal(const FIntPoint& Cell)
 	{
 		return GridToLocal(FVector2d(Cell.X, Cell.Y));
-	}
-
-	FLinearColor FromHex(const TCHAR* Hex)
-	{
-		return FLinearColor::FromSRGBColor(FColor::FromHex(Hex));
 	}
 }
 
@@ -47,18 +40,18 @@ ACytraBoard::ACytraBoard()
 
 	// Placeholder palette, after the web prototype.
 	TileColors = {
-		{ ECytraTileType::Rock, FromHex(TEXT("2a3340")) },
-		{ ECytraTileType::Road, FromHex(TEXT("6d6351")) },
-		{ ECytraTileType::Ledge, FromHex(TEXT("9ca8b8")) },
-		{ ECytraTileType::Slot, FromHex(TEXT("f0a04b")) },
-		{ ECytraTileType::HighSlot, FromHex(TEXT("e9eef4")) },
-		{ ECytraTileType::Rubble, FromHex(TEXT("8a8072")) },
-		{ ECytraTileType::Gap, FromHex(TEXT("05070a")) },
-		{ ECytraTileType::Cliff, FromHex(TEXT("566173")) },
-		{ ECytraTileType::Camp, FromHex(TEXT("8cc48d")) },
-		{ ECytraTileType::OutpostSite, FromHex(TEXT("8a5a2c")) },
-		{ ECytraTileType::Mine, FromHex(TEXT("f2cf63")) },
-		{ ECytraTileType::Nest, FromHex(TEXT("bba8ea")) },
+		{ ECytraTileType::Rock, CytraShapes::FromHex(TEXT("2a3340")) },
+		{ ECytraTileType::Road, CytraShapes::FromHex(TEXT("6d6351")) },
+		{ ECytraTileType::Ledge, CytraShapes::FromHex(TEXT("9ca8b8")) },
+		{ ECytraTileType::Slot, CytraShapes::FromHex(TEXT("f0a04b")) },
+		{ ECytraTileType::HighSlot, CytraShapes::FromHex(TEXT("e9eef4")) },
+		{ ECytraTileType::Rubble, CytraShapes::FromHex(TEXT("8a8072")) },
+		{ ECytraTileType::Gap, CytraShapes::FromHex(TEXT("05070a")) },
+		{ ECytraTileType::Cliff, CytraShapes::FromHex(TEXT("566173")) },
+		{ ECytraTileType::Camp, CytraShapes::FromHex(TEXT("8cc48d")) },
+		{ ECytraTileType::OutpostSite, CytraShapes::FromHex(TEXT("8a5a2c")) },
+		{ ECytraTileType::Mine, CytraShapes::FromHex(TEXT("f2cf63")) },
+		{ ECytraTileType::Nest, CytraShapes::FromHex(TEXT("bba8ea")) },
 	};
 
 	TileHeights = {
@@ -103,7 +96,7 @@ bool ACytraBoard::EnsureBuilt()
 		return false;
 	}
 
-	const float Footprint = (CellSize - TileGap) / ShapeSize;
+	const float Footprint = (CellSize - TileGap) / CytraShapes::Size;
 	for (int32 Y = 0; Y < Map.Rows; ++Y)
 	{
 		for (int32 X = 0; X < Map.Cols; ++X)
@@ -112,7 +105,7 @@ bool ACytraBoard::EnsureBuilt()
 			const ECytraTileType Type = Map.Get(Cell);
 			const float Height = GetTileHeight(Type);
 			const FVector Center = CellToLocal(Cell) + FVector(0.0f, 0.0f, Height * 0.5f);
-			GetOrCreateTileComponent(Type)->AddInstance(FTransform(FQuat::Identity, Center, FVector(Footprint, Footprint, Height / ShapeSize)));
+			GetOrCreateTileComponent(Type)->AddInstance(FTransform(FQuat::Identity, Center, FVector(Footprint, Footprint, Height / CytraShapes::Size)));
 		}
 	}
 

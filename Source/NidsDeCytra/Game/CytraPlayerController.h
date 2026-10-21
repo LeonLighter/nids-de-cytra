@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "CytraPlayerController.generated.h"
 
+class UCytraHudWidget;
+
 /** Mouse-driven controller: the cursor stays visible, the game is played by clicking tiles. */
 UCLASS()
 class NIDSDECYTRA_API ACytraPlayerController : public APlayerController
@@ -15,6 +17,12 @@ class NIDSDECYTRA_API ACytraPlayerController : public APlayerController
 public:
 	ACytraPlayerController();
 
+	/** Order from the interface: launch the next wave now. */
+	void LaunchWave();
+
 protected:
 	virtual void BeginPlay() override;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCytraHudWidget> Hud;
 };

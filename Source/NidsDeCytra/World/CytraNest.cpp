@@ -6,11 +6,10 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "World/CytraShapes.h"
 
 namespace
 {
-	constexpr float ShapeSize = 100.0f;
-
 	// Egg layout of the web prototype, converted from its 40-pixel cells: golden-angle spiral, eggs 0.21 x 0.28 cells.
 	constexpr double GoldenAngle = 2.39996;
 	constexpr double SpiralStart = 5.0 / 40.0;
@@ -34,7 +33,7 @@ ACytraNest::ACytraNest()
 	EggMaterial = MaterialFinder.Object;
 	Eggs->SetStaticMesh(EggMesh);
 
-	EggColor = FLinearColor::FromSRGBColor(FColor::FromHex(TEXT("f3eedd")));
+	EggColor = CytraShapes::FromHex(TEXT("f3eedd"));
 }
 
 void ACytraNest::SetEggs(int32 Count, float CellSize)
@@ -53,7 +52,7 @@ void ACytraNest::SetEggs(int32 Count, float CellSize)
 
 	Eggs->ClearInstances();
 	// Grid x runs along world +Y and grid y along world -X: an egg elongated along grid y is long in world X.
-	const FVector Scale(EggLength * CellSize / ShapeSize, EggWidth * CellSize / ShapeSize, EggWidth * CellSize / ShapeSize);
+	const FVector Scale(EggLength * CellSize / CytraShapes::Size, EggWidth * CellSize / CytraShapes::Size, EggWidth * CellSize / CytraShapes::Size);
 	for (int32 i = 0; i < Count; ++i)
 	{
 		const double Angle = i * GoldenAngle;
