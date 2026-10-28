@@ -441,12 +441,12 @@ bool FCytraPanelCrewTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const FCytraPanelAction& Miner = Start.Actions[0];
-	TestEqual(TEXT("Recruits a miner"), Miner.Recruit, FName(TEXT("Miner")));
-	TestEqual(TEXT("Miner name"), Miner.Name.ToString(), FString(TEXT("Recruter un mineur")));
-	TestEqual(TEXT("Miner cost"), Miner.Cost.ToString(), FString(TEXT("40 or")));
-	TestEqual(TEXT("Miner details"), Miner.Meta.ToString(), FString(TEXT("Spécialité : déblayage, mine d’or")));
-	TestTrue(TEXT("Miner recruitable"), Miner.IsEnabled());
+	const FCytraPanelAction& MinerButton = Start.Actions[0];
+	TestEqual(TEXT("Recruits a miner"), MinerButton.Recruit, FName(TEXT("Miner")));
+	TestEqual(TEXT("Miner name"), MinerButton.Name.ToString(), FString(TEXT("Recruter un mineur")));
+	TestEqual(TEXT("Miner cost"), MinerButton.Cost.ToString(), FString(TEXT("40 or")));
+	TestEqual(TEXT("Miner details"), MinerButton.Meta.ToString(), FString(TEXT("Spécialité : déblayage, mine d’or")));
+	TestTrue(TEXT("Miner recruitable"), MinerButton.IsEnabled());
 	TestEqual(TEXT("Engineer name"), Start.Actions[2].Name.ToString(), FString(TEXT("Recruter un ingénieur")));
 	TestEqual(TEXT("Engineer details"), Start.Actions[2].Meta.ToString(), FString(TEXT("Spécialité : ingénierie")));
 
