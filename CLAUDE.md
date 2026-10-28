@@ -131,5 +131,5 @@ Les numéros vont de 10 en 10 et chaque phase a sa centaine : phase 1 (reproduir
 - **J40 · Tourelles.** Baliste, mortier, bobine, tirs, améliorations, démontage.
 - **J50 · Mine et recrutement.** Mine d'or, recrutement.
 - **J60 · Interface complète.** Panneau d'équipe, messages, pause, vitesse, écran de fin. Partie entière comparée au prototype.
-- **J65 · Vue isométrique.** Caméra orthographique en isométrie vraie depuis le sud-ouest, toute la carte visible, zoom à la molette, déplacement ZQSD ou WASD une fois zoomé, clic sur le premier bloc touché, réglages de caméra et hauteurs des cases dans `Looks.json`.
+- **J65 · Vue isométrique.** Caméra orthographique en isométrie vraie depuis le sud-ouest, toute la carte visible, zoom à la molette, déplacement ZQSD ou WASD une fois zoomé, clic sur le premier bloc touché, réglages de caméra et hauteurs des cases dans `Looks.json`. En complément, après le prototype : « Construire un pont » au lieu de « Jeter un pont », renvoi d'un ouvrier contre 70 % de son coût de recrutement.
 - **J66 · Préparation d'un playtest.** Changements éventuels à apporter avant de faire jouer des joueurs, à définir.

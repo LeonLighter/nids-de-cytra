@@ -103,6 +103,8 @@ Les spécialités sont **strictes** : un ordre ne peut être exécuté que par u
 
 Les recrues arrivent toujours au camp principal.
 
+Un ouvrier peut être renvoyé à tout moment de la partie, ouvriers de départ compris, contre 70 % du coût de recrutement de sa spécialité, arrondi à l'entier inférieur (28, 35 ou 42 or ; taux `dismissRefund` dans `Balance.json`). Un ouvrier occupé peut aussi être renvoyé : son chantier garde son avancement et revient au plus proche ouvrier libre de la spécialité, ou attend une recrue. Le renvoi est refusé une fois la partie terminée. Cette règle s'ajoute au prototype.
+
 ### États d'un ouvrier
 
 | État | Sens | Disponible pour un nouveau chantier |
