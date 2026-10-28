@@ -421,6 +421,11 @@ int32 FCytraMatch::MinersAtMine() const
 	return Count;
 }
 
+int32 FCytraMatch::MinersMining() const
+{
+	return Workers.FilterByPredicate([](const FCytraWorker& Worker) { return Worker.State == ECytraWorkerState::Mining; }).Num();
+}
+
 TOptional<TArray<FIntPoint>> FCytraMatch::PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const
 {
 	return Grid.FindPath(RoundToCell(Worker.Position), Goal);
@@ -548,7 +553,22 @@ void FCytraMatch::StepWorkers(double Dt)
 				Finish(JobIndex, Worker);
 			}
 		}
-		// Mining income comes here (J50).
+		else if (Worker.State == ECytraWorkerState::Mining)
+		{
+			Worker.MineTime += Dt;
+			if (Worker.MineTime >= Balance.MinePeriod)
+			{
+				Worker.MineTime -= Balance.MinePeriod;
+				Wallet.EarnFromMine(Balance.MineYield);
+				FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
+				Event.Type = ECytraMatchEventType::MineYield;
+				Event.Gold = Balance.MineYield;
+				if (const FIntPoint* Mine = Map.Mines.FindByPredicate([this](const FIntPoint& Cell) { return Grid.IsOpened(Cell); }))
+				{
+					Event.Cell = *Mine;
+				}
+			}
+		}
 	}
 }
 

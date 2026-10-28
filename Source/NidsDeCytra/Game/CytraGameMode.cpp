@@ -468,6 +468,9 @@ void ACytraGameMode::LogEvents()
 			}
 			bGridChanged = true;
 			break;
+		case ECytraMatchEventType::MineYield:
+			UE_LOG(LogCytra, Verbose, TEXT("Match: +%d gold from the mine, %d in total"), Event.Gold, Match->GetWallet().Mined);
+			break;
 		}
 	}
 
