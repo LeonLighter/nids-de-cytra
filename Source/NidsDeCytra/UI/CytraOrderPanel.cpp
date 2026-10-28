@@ -134,11 +134,34 @@ void UCytraOrderPanel::AddTitle(const FCytraPanelView& View)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	UTextBlock* Title = MakeText(21, Palette.Snow, false, View.Title);
-	Content->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+	if (View.TitleNote.IsEmpty())
+	{
+		Content->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+	}
+	else
+	{
+		Title->SetAutoWrapText(false);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		Row->AddChildToHorizontalBox(Title)->SetVerticalAlignment(VAlign_Bottom);
+		UHorizontalBoxSlot* NoteSlot = Row->AddChildToHorizontalBox(MakeText(14, Palette.Mist, false, View.TitleNote));
+		NoteSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 3.0f));
+		NoteSlot->SetVerticalAlignment(VAlign_Bottom);
+		Content->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+	}
 	if (!View.Tag.IsEmpty())
 	{
 		UTextBlock* Tag = MakeText(12, Palette.Snow, false, View.Tag.ToUpper());
 		Content->AddChildToVerticalBox(Tag)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+	}
+	for (int32 Index = 0; Index < View.Stats.Num(); ++Index)
+	{
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		Row->AddChildToHorizontalBox(MakeText(15, Palette.Mist, false, View.Stats[Index].Label))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		UTextBlock* Value = MakeText(15, Palette.Snow, true, View.Stats[Index].Value);
+		Value->SetAutoWrapText(false);
+		Row->AddChildToHorizontalBox(Value);
+		const float Gap = Index == View.Stats.Num() - 1 ? BlockGap : 4.0f;
+		Content->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, Gap));
 	}
 }
 

@@ -28,6 +28,13 @@ struct FCytraPanelLine
 	FText Suffix;
 };
 
+/** A labelled value, such as the damage of a tower. */
+struct FCytraPanelStat
+{
+	FText Label;
+	FText Value;
+};
+
 /** An order the player can give on the selected cell. */
 struct FCytraPanelAction
 {
@@ -49,8 +56,11 @@ struct FCytraPanelAction
 struct NIDSDECYTRA_API FCytraPanelView
 {
 	FText Title;
+	/** Small text after the title, such as the level of a tower. Empty if none. */
+	FText TitleNote;
 	/** Small label under the title, such as the range bonus of a promontory. Empty if none. */
 	FText Tag;
+	TArray<FCytraPanelStat> Stats;
 	TArray<FCytraPanelLine> Lines;
 	TArray<FCytraPanelAction> Actions;
 
