@@ -69,6 +69,13 @@ bool FCytraTextDataKeysTest::RunTest(const FString& Parameters)
 		Keys.Add(FString::Printf(TEXT("Work.%s.Label"), *Work.Key.ToString()));
 		Keys.Add(FString::Printf(TEXT("Work.%s.Ordered"), *Work.Key.ToString()));
 	}
+	for (const TPair<FName, FCytraTowerDef>& Tower : Balance.Towers)
+	{
+		for (const TCHAR* Field : { TEXT("Name"), TEXT("Desc"), TEXT("Ordered") })
+		{
+			Keys.Add(FString::Printf(TEXT("Tower.%s.%s"), *Tower.Key.ToString(), Field));
+		}
+	}
 	const UEnum* TileEnum = StaticEnum<ECytraTileType>();
 	for (int32 i = 0; i < TileEnum->NumEnums() - 1; ++i)
 	{

@@ -12,6 +12,8 @@ class ACytraBoard;
 class ACytraEnemy;
 class ACytraMarkers;
 class ACytraNest;
+class ACytraShots;
+class ACytraTower;
 class ACytraWorker;
 
 /**
@@ -51,8 +53,14 @@ public:
 	/** Player order on a cell: pays for it and queues its job, or reports why it is refused. */
 	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
 
-	/** Frames the selected cell on the board, or hides the frame. */
+	/** Frames the selected cell on the board, or hides the frame. On a slot, also shows the tower range. */
 	void ShowSelection(const TOptional<FIntPoint>& Cell);
+
+	/**
+	 * Tower type the player points at in the order panel: an empty selected slot shows its range.
+	 * NAME_None shows the range of the first tower type of the data. Reset when the selection changes.
+	 */
+	void ShowPreviewTower(FName Tower);
 
 	/** Development cheat: kills every enemy on the map, paying their gold. */
 	void KillAllEnemies();
@@ -88,6 +96,13 @@ private:
 	/** Spawns and moves worker actors to match the simulation. */
 	void SyncWorkers();
 
+	/** Shows the towers in service and those being built, which grow by a quarter of their size every quarter of the job. */
+	void SyncTowers();
+	ACytraTower* SpawnTower(const FIntPoint& Cell, FName Type);
+
+	/** Range circle of the selected slot, redrawn only when it changes. */
+	void SyncRange();
+
 	UPROPERTY(Transient)
 	TObjectPtr<ACytraBoard> Board;
 
@@ -105,6 +120,13 @@ private:
 	UPROPERTY(Transient)
 	TMap<int32, TObjectPtr<ACytraWorker>> WorkerActors;
 
+	/** Tower actors by slot, built or being built. */
+	UPROPERTY(Transient)
+	TMap<FIntPoint, TObjectPtr<ACytraTower>> TowerActors;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ACytraShots> Shots;
+
 	TUniquePtr<FCytraMatch> Match;
 	FCytraLooks Looks;
 	/** Enemy types already reported as having no look. */
@@ -112,6 +134,16 @@ private:
 
 	/** Set when an access may have opened or the jobs changed: the board redraws its marks. */
 	bool bGridChanged = true;
+
+	TOptional<FIntPoint> SelectedCell;
+	FName PreviewTower;
+	/** Range circle on screen. */
+	TOptional<FIntPoint> ShownRangeCell;
+	double ShownRange = 0.0;
+	bool bShownRangeDashed = false;
+
+	/** Seconds of the current frame, for the effects; 0 when the view syncs outside the frame update. */
+	float FrameSeconds = 0.0f;
 
 	/** Game time not simulated yet, less than one step. */
 	double StepAccumulator = 0.0;

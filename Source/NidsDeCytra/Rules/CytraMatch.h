@@ -29,6 +29,70 @@ struct FCytraEnemy
 	int32 Gold = 0;
 	int32 Eggs = 0;
 	bool bDead = false;
+	/** Match time until which the enemy is slowed, and its speed multiplier meanwhile. */
+	double SlowUntil = 0.0;
+	double SlowFactor = 1.0;
+
+	bool IsSlowed(double Time) const { return Time < SlowUntil; }
+	/** Cells per second at match time Time. */
+	double SpeedAt(double Time) const { return Speed * (IsSlowed(Time) ? SlowFactor : 1.0); }
+};
+
+/** Firing state of a tower, kept in order of construction: towers fire in that order, as in the prototype. */
+struct FCytraTowerGun
+{
+	FIntPoint Cell = FIntPoint::ZeroValue;
+	/** Seconds before the next shot. Ready at 0 or below. */
+	double Cooldown = 0.0;
+	/** Direction of the last target, in radians from the +X axis of the grid. */
+	double Aim = 0.0;
+};
+
+enum class ECytraShotKind : uint8
+{
+	/** Homing bolt, hits its target on contact. */
+	Bolt,
+	/** Shell flying to a fixed point, splash damage on landing. */
+	Shell,
+};
+
+/** A projectile in flight. Positions are in grid cells. */
+struct FCytraShot
+{
+	ECytraShotKind Kind = ECytraShotKind::Bolt;
+	/** Type of the tower that fired it. */
+	FName Tower;
+	double Damage = 0.0;
+	/** Bolt: current position, flight direction in radians, speed in cells per second and target enemy id. */
+	FVector2d Position = FVector2d::ZeroVector;
+	double Angle = 0.0;
+	double Speed = 0.0;
+	int32 Target = 0;
+	/** Shell: launch and landing points, seconds in flight, flight duration and splash radius. */
+	FVector2d From = FVector2d::ZeroVector;
+	FVector2d To = FVector2d::ZeroVector;
+	double Elapsed = 0.0;
+	double Duration = 0.0;
+	double Splash = 0.0;
+	bool bDone = false;
+};
+
+enum class ECytraEffectKind : uint8
+{
+	/** Instant hit of a chain tower, from the tower to one enemy. */
+	Zap,
+	/** A shell landed. */
+	Blast,
+};
+
+/** Something brief to show. The rules forget it at once. */
+struct FCytraEffect
+{
+	ECytraEffectKind Kind = ECytraEffectKind::Zap;
+	FName Tower;
+	FVector2d From = FVector2d::ZeroVector;
+	FVector2d To = FVector2d::ZeroVector;
+	double Radius = 0.0;
 };
 
 enum class ECytraMatchEventType : uint8
@@ -56,6 +120,9 @@ struct FCytraMatchEvent
 	FName Work;
 	FIntPoint Cell = FIntPoint::ZeroValue;
 	int32 OpenedSlots = 0;
+	/** JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling. */
+	int32 Level = 0;
+	int32 Refund = 0;
 };
 
 struct FCytraLaunchResult
@@ -92,6 +159,9 @@ public:
 	/** Events since the last call, oldest first. */
 	TArray<FCytraMatchEvent> ConsumeEvents();
 
+	/** Effects since the last call, oldest first. */
+	TArray<FCytraEffect> ConsumeEffects();
+
 	ECytraMatchPhase GetPhase() const { return Phase; }
 	bool IsOver() const { return Phase == ECytraMatchPhase::Won || Phase == ECytraMatchPhase::Lost; }
 	const FCytraWallet& GetWallet() const { return Wallet; }
@@ -113,6 +183,10 @@ public:
 	const TArray<FCytraJob>& GetJobs() const { return Jobs; }
 	const FCytraJob* FindJobAt(const FIntPoint& Cell) const;
 	const FCytraWorker* FindWorker(int32 WorkerId) const;
+	/** Towers in service, in order of construction. Type and level are on the grid. */
+	const TArray<FCytraTowerGun>& GetTowers() const { return Towers; }
+	/** Projectiles in flight. */
+	const TArray<FCytraShot>& GetShots() const { return Shots; }
 
 	const FCytraMapDef& GetMap() const { return Map; }
 	const FCytraBalance& GetBalance() const { return Balance; }
@@ -122,6 +196,11 @@ private:
 	FCytraLaunchResult StartWave(bool bAuto);
 	void Spawn(const FCytraSpawn& Entry);
 	void MoveEnemies(double Dt);
+	/** Every ready tower fires at the most advanced enemy in range, in order of construction. */
+	void FireTowers(double Dt);
+	void MoveShots(double Dt);
+	/** Hits an enemy. At 0 hit points it dies and pays its gold. Dead enemies are ignored. */
+	void Hit(FCytraEnemy& Enemy, double Damage);
 
 	void AddWorker(FName Role);
 	void StepWorkers(double Dt);
@@ -145,6 +224,9 @@ private:
 	FCytraGrid Grid;
 	TArray<FCytraWorker> Workers;
 	TArray<FCytraJob> Jobs;
+	TArray<FCytraTowerGun> Towers;
+	TArray<FCytraShot> Shots;
+	TArray<FCytraEffect> Effects;
 
 	FCytraWallet Wallet;
 	int32 Eggs = 0;

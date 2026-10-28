@@ -121,6 +121,14 @@ void ACytraPlayerController::OrderOnSelection(const FCytraOrderAction& Action)
 	}
 }
 
+void ACytraPlayerController::PreviewTower(FName Tower)
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->ShowPreviewTower(Tower);
+	}
+}
+
 void ACytraPlayerController::LaunchWave()
 {
 	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())

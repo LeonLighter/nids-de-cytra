@@ -110,10 +110,10 @@ Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs
 
 - `Source/<Nom>/Rules/` : logique pure. Définition de carte, grille et accessibilité, recherche de chemin (parcours en largeur, 4 voisins), économie, file de chantiers, calendrier des vagues, équilibrage chargé depuis les données.
 - `Source/<Nom>/Game/` : `ACytraGameMode` (déroulé : préparation, vague, victoire, défaite), `ACytraGameState` (or, œufs, vague, phase, compte à rebours), `ACytraPlayerController` (souris, sélection d'une case, ordres), `ACytraCameraPawn` (vue de dessus).
-- `Source/<Nom>/World/` : `ACytraBoard` (génère le plateau depuis la carte, en instanced static meshes), `ACytraEnemy`, `ACytraWorker`, `ACytraTower`, `ACytraProjectile`, `ACytraNest`.
+- `Source/<Nom>/World/` : `ACytraBoard` (génère le plateau depuis la carte, en instanced static meshes), `ACytraEnemy`, `ACytraWorker`, `ACytraTower`, `ACytraShots` (tous les projectiles et effets brefs, en instanced static meshes), `ACytraNest`.
 - `Source/<Nom>/UI/` : interface écrite en C++ (Slate, ou UMG construit en C++), sans Widget Blueprint.
 - `Source/<Nom>/Tests/` : tests d'automatisation.
-- `Content/Data/` : carte, vagues et équilibrage en JSON, apparence provisoire des ennemis et des ouvriers (`Looks.json`), textes affichés (`Text/CytraText.csv`, table de chaînes). Ce dossier est ajouté aux dossiers non-assets à empaqueter. Une spécialité ou un chantier ajouté aux données demande aussi ses textes dans `CytraText.csv` : le test `Cytra.UI.Text.DataKeys` signale ceux qui manquent.
+- `Content/Data/` : carte, vagues et équilibrage en JSON, apparence provisoire des ennemis, des ouvriers et des tourelles (`Looks.json` ; une tourelle y a un socle `base`, une pièce `top` et `aims` si cette pièce pivote vers la cible), textes affichés (`Text/CytraText.csv`, table de chaînes). Ce dossier est ajouté aux dossiers non-assets à empaqueter. Une spécialité, un chantier ou une tourelle ajouté aux données demande aussi ses textes dans `CytraText.csv` (`Tower.<Id>.Name`, `.Desc`, `.Ordered` pour une tourelle) et son apparence dans `Looks.json` : les tests `Cytra.UI.Text.DataKeys` et `Cytra.World.Looks.LoadsLooks` signalent ceux qui manquent. Une tourelle ne demande pas de code tant qu'elle reprend un comportement existant (`Bolt`, `Shell` ou `Chain` dans `Balance.json`).
 - Entrées : Enhanced Input, actions et contexte créés en C++.
 - Vitesse ×1, ×2, ×3 par dilatation globale du temps. Pause par mise en pause du jeu, les ordres restant possibles en pause.
 

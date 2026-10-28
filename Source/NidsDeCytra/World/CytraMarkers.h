@@ -27,9 +27,18 @@ public:
 	/** One bar per job: orange once a worker is assigned, gray with three dots while it waits for one. */
 	void ShowJobs(const ACytraBoard& Board, const TArray<FCytraJob>& Jobs);
 
+	/**
+	 * Draws a circle of Radius cells around Cell: the range of the tower there, dashed for a tower not built yet.
+	 * Hidden when Cell is unset.
+	 */
+	void ShowRange(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell, double Radius, bool bDashed);
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UInstancedStaticMeshComponent> SelectionFrame;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> RangeRing;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInstancedStaticMeshComponent> BarBacks;

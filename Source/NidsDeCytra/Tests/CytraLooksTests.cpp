@@ -33,6 +33,13 @@ bool FCytraLooksLoadsLooksTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(FString::Printf(TEXT("%s has a look"), *Role.Key.ToString()), Looks.Workers.Contains(Role.Key));
 	}
+	for (const TPair<FName, FCytraTowerDef>& Tower : Balance.Towers)
+	{
+		TestTrue(FString::Printf(TEXT("%s has a look"), *Tower.Key.ToString()), Looks.Towers.Contains(Tower.Key));
+	}
+	TestTrue(TEXT("Ballista aims"), Looks.TowerLook(TEXT("Ballista")).bAims);
+	TestFalse(TEXT("Mortar does not aim"), Looks.TowerLook(TEXT("Mortar")).bAims);
+	TestEqual(TEXT("Coil top"), Looks.TowerLook(TEXT("Coil")).Top.Shape, FName(TEXT("Sphere")));
 	TestTrue(TEXT("Carpenter color"), Looks.WorkerLook(TEXT("Carpenter")).Color.Equals(FLinearColor::FromSRGBColor(FColor(0xd1, 0x7f, 0x45))));
 
 	const FCytraLook& Bandit = Looks.EnemyLook(TEXT("Bandit"));
@@ -64,6 +71,10 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 		{ TEXT("No enemies section"), TEXT(R"({})"), TEXT("enemies") },
 		{ TEXT("No workers section"), TEXT(R"({"enemies":{}})"), TEXT("workers") },
 		{ TEXT("Bad worker"), TEXT(R"({"enemies":{},"workers":{"Miner":{"shape":"Cube","color":"e3b341","size":-1}}})"), TEXT("workers.Miner.size") },
+		{ TEXT("No towers section"), TEXT(R"({"enemies":{},"workers":{}})"), TEXT("towers") },
+		{ TEXT("Tower without top"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Mortar":{"base":{"shape":"Cube","color":"3a404a","size":0.6}}}})"), TEXT("towers.Mortar.top") },
+		{ TEXT("Bad tower base"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Mortar":{"base":{"shape":"Torus","color":"3a404a","size":0.6},"top":{"shape":"Cube","color":"07090c","size":0.3}}}})"), TEXT("towers.Mortar.base.shape") },
+		{ TEXT("Aims not a boolean"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Ballista":{"base":{"shape":"Cube","color":"3a404a","size":0.6},"top":{"shape":"Cube","color":"07090c","size":0.3},"aims":1}}})"), TEXT("towers.Ballista.aims") },
 	};
 	for (const FCase& Case : Cases)
 	{
@@ -75,7 +86,7 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 
 	FCytraLooks Looks;
 	FString Error;
-	TestTrue(TEXT("Leading # accepted"), FCytraLooks::ParseJson(TEXT(R"({"enemies":{"Bandit":{"shape":"Cone","color":"#A9814E","size":0.4}},"workers":{}})"), Looks, Error));
+	TestTrue(TEXT("Leading # accepted"), FCytraLooks::ParseJson(TEXT(R"({"enemies":{"Bandit":{"shape":"Cone","color":"#A9814E","size":0.4}},"workers":{},"towers":{}})"), Looks, Error));
 	return true;
 }
 

@@ -25,6 +25,8 @@ namespace CytraJson
 		bool OptionalNumber(const TCHAR* Field, double& Out) const;
 		bool Integer(const TCHAR* Field, int32& Out) const;
 		bool OptionalInteger(const TCHAR* Field, int32& Out) const;
+		/** Keeps Out unchanged when the field is absent. */
+		bool OptionalBool(const TCHAR* Field, bool& Out) const;
 		bool String(const TCHAR* Field, FString& Out) const;
 		bool Name(const TCHAR* Field, FName& Out) const;
 		bool Object(const TCHAR* Field, TSharedPtr<FJsonObject>& Out) const;

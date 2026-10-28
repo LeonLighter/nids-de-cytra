@@ -3,6 +3,7 @@
 #include "UI/CytraPanelView.h"
 
 #include "Rules/CytraMatch.h"
+#include "Rules/CytraMath.h"
 #include "UI/CytraText.h"
 
 namespace
@@ -61,46 +62,138 @@ namespace
 		Line.Text = Text;
 	}
 
+	FText TowerText(FName Tower, const TCHAR* Field)
+	{
+		return CytraText::Get(FString::Printf(TEXT("Tower.%s.%s"), *Tower.ToString(), Field));
+	}
+
+	/** A share such as 0.6 as a whole percentage. */
+	int32 Percent(double Share)
+	{
+		return CytraMath::Round(Share * 100.0);
+	}
+
+	FText Decimal(double Value, int32 Digits)
+	{
+		FNumberFormattingOptions Options;
+		Options.MinimumFractionalDigits = Digits;
+		Options.MaximumFractionalDigits = Digits;
+		return FText::AsNumber(Value, &Options);
+	}
+
+	void AddStat(FCytraPanelView& View, const TCHAR* LabelKey, const FText& Value)
+	{
+		FCytraPanelStat& Stat = View.Stats.AddDefaulted_GetRef();
+		Stat.Label = CytraText::Get(LabelKey);
+		Stat.Value = Value;
+	}
+
+	/**
+	 * A button for the order if it applies to the cell, with its price (the cost unless Price is given),
+	 * a short Extra description if any, the specialty and the job duration, and the reason it is refused.
+	 */
+	void AddAction(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, const FCytraOrderAction& Action,
+		const FText& Name, const FText& Extra, const FText* Price = nullptr)
+	{
+		const FCytraOrderCheck Check = Match.CheckOrder(Cell, Action);
+		if (!Check.Spec)
+		{
+			return;
+		}
+		FCytraPanelAction& Entry = View.Actions.AddDefaulted_GetRef();
+		Entry.Action = Action;
+		Entry.Name = Name;
+		Entry.Cost = Price ? *Price : FText::Format(CytraText::Get(TEXT("Panel.Cost")), Check.Spec->Cost);
+		Entry.Meta = Extra.IsEmpty()
+			? FText::Format(CytraText::Get(TEXT("Panel.Meta")), RoleShort(Check.Spec->Role), FText::AsNumber(Check.Spec->Time))
+			: FText::Format(CytraText::Get(TEXT("Panel.MetaWith")), Extra, RoleShort(Check.Spec->Role), FText::AsNumber(Check.Spec->Time));
+		if (!Check.IsAccepted())
+		{
+			Entry.Refusal = FCytraPanelView::RefusalText(Check);
+		}
+	}
+
+	void AddJobState(FCytraPanelView& View, const FCytraMatch& Match, const FCytraJob& Job, const FText& Ordered)
+	{
+		AddLine(View, ECytraPanelLineStyle::State, FText::Format(CytraText::Get(TEXT("Panel.JobState")), Ordered, JobLine(Match, Job)));
+	}
+
 	/** The job ordered on the cell, or a button for each work that applies there. */
 	void AddWorks(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, ECytraTileType Type)
 	{
 		if (const FCytraJob* Job = Match.FindJobAt(Cell))
 		{
-			AddLine(View, ECytraPanelLineStyle::State, FText::Format(CytraText::Get(TEXT("Panel.JobState")), WorkText(Job->Type, TEXT("Ordered")), JobLine(Match, *Job)));
+			AddJobState(View, Match, *Job, WorkText(Job->Type, TEXT("Ordered")));
 			return;
 		}
 		for (const FCytraWorkDef* Work : WorksOn(Match.GetBalance(), Type))
 		{
-			const FCytraOrderAction Action = FCytraOrderAction::Work(Work->Id);
-			const FCytraOrderCheck Check = Match.CheckOrder(Cell, Action);
-			if (!Check.Spec)
-			{
-				continue;
-			}
-			FCytraPanelAction& Entry = View.Actions.AddDefaulted_GetRef();
-			Entry.Action = Action;
-			Entry.Name = WorkText(Work->Id, TEXT("Label"));
-			Entry.Cost = FText::Format(CytraText::Get(TEXT("Panel.Cost")), Check.Spec->Cost);
-			Entry.Meta = FText::Format(CytraText::Get(TEXT("Panel.Meta")), RoleShort(Check.Spec->Role), FText::AsNumber(Check.Spec->Time));
-			if (!Check.IsAccepted())
-			{
-				Entry.Refusal = FCytraPanelView::RefusalText(Check);
-			}
+			AddAction(View, Match, Cell, FCytraOrderAction::Work(Work->Id), WorkText(Work->Id, TEXT("Label")), FText::GetEmpty());
 		}
+	}
+
+	/** A tower: its level and stats, then its upgrade and dismantling, or the job running on it. */
+	void BuildTower(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, const FCytraTower& Tower, bool bHighSlot)
+	{
+		const FCytraBalance& Balance = Match.GetBalance();
+		const FCytraTowerStats Stats = Balance.TowerStats(Tower.Type, Tower.Level, bHighSlot);
+		View.Title = TowerText(Tower.Type, TEXT("Name"));
+		View.TitleNote = FText::Format(CytraText::Get(TEXT("Panel.Level")), Tower.Level, Balance.Upgrade.MaxLevel);
+		if (bHighSlot)
+		{
+			View.Tag = FText::Format(CytraText::Get(TEXT("Panel.HighTowerTag")), Percent(Balance.HighSlotRangeBonus - 1.0));
+		}
+		AddStat(View, TEXT("Panel.Damage"), FText::AsNumber(CytraMath::Round(Stats.Damage)));
+		AddStat(View, TEXT("Panel.Range"), FText::Format(CytraText::Get(TEXT("Panel.RangeValue")), Decimal(Stats.Range, 1)));
+		AddStat(View, TEXT("Panel.Rate"), FText::Format(CytraText::Get(TEXT("Panel.RateValue")), Decimal(Stats.Rate, 2)));
+		AddStat(View, TEXT("Panel.Invested"), FText::Format(CytraText::Get(TEXT("Panel.Cost")), Tower.Invested));
+
+		if (const FCytraJob* Job = Match.FindJobAt(Cell))
+		{
+			AddJobState(View, Match, *Job, CytraText::Get(Job->Kind == ECytraOrderKind::Dismantle ? TEXT("Panel.DismantleOrdered") : TEXT("Panel.UpgradeOrdered")));
+			return;
+		}
+		if (Tower.Level >= Balance.Upgrade.MaxLevel)
+		{
+			AddLine(View, ECytraPanelLineStyle::Text, CytraText::Get(TEXT("Panel.MaxLevel")));
+		}
+		else
+		{
+			AddAction(View, Match, Cell, FCytraOrderAction::Upgrade(),
+				FText::Format(CytraText::Get(TEXT("Panel.Upgrade")), Tower.Level + 1),
+				FText::Format(CytraText::Get(TEXT("Panel.UpgradeExtra")), Percent(Balance.Upgrade.DamagePerLevel), Percent(Balance.Upgrade.RangePerLevel)));
+		}
+		const FText Refund = FText::Format(CytraText::Get(TEXT("Panel.Refund")), Balance.DismantleRefundOf(Tower.Invested));
+		AddAction(View, Match, Cell, FCytraOrderAction::Dismantle(), CytraText::Get(TEXT("Panel.Dismantle")),
+			FText::Format(CytraText::Get(TEXT("Panel.DismantleExtra")), Percent(Balance.DismantleRefund)), &Refund);
 	}
 
 	void BuildSlot(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, ECytraTileType Type)
 	{
 		const FCytraGrid& Grid = Match.GetGrid();
-		View.Title = TileText(Type, TEXT("Title"));
-		if (Type == ECytraTileType::HighSlot)
+		const bool bHighSlot = Type == ECytraTileType::HighSlot;
+		if (const FCytraTower* Tower = Grid.GetTower(Cell))
 		{
-			const int32 Bonus = FMath::RoundToInt32((Match.GetBalance().HighSlotRangeBonus - 1.0) * 100.0);
-			View.Tag = FText::Format(CytraText::Get(TEXT("Panel.HighTag")), Bonus);
+			BuildTower(View, Match, Cell, *Tower, bHighSlot);
+			return;
 		}
-		// Towers are built, upgraded and dismantled from here (J40).
+
+		View.Title = TileText(Type, TEXT("Title"));
+		if (bHighSlot)
+		{
+			View.Tag = FText::Format(CytraText::Get(TEXT("Panel.HighTag")), Percent(Match.GetBalance().HighSlotRangeBonus - 1.0));
+		}
+		if (const FCytraJob* Job = Match.FindJobAt(Cell))
+		{
+			AddJobState(View, Match, *Job, TowerText(Job->Type, TEXT("Ordered")));
+			return;
+		}
 		if (Grid.IsReachable(Cell))
 		{
+			for (const TPair<FName, FCytraTowerDef>& Tower : Match.GetBalance().Towers)
+			{
+				AddAction(View, Match, Cell, FCytraOrderAction::Build(Tower.Key), TowerText(Tower.Key, TEXT("Name")), TowerText(Tower.Key, TEXT("Desc")));
+			}
 			return;
 		}
 		AddLine(View, ECytraPanelLineStyle::Warning, CytraText::Get(TEXT("Panel.CutOff")));
@@ -202,7 +295,11 @@ FText FCytraPanelView::RefusalText(const FCytraOrderCheck& Check)
 
 FString FCytraPanelView::Signature() const
 {
-	FString Result = Title.ToString() + TEXT("|") + Tag.ToString();
+	FString Result = Title.ToString() + TEXT("|") + TitleNote.ToString() + TEXT("|") + Tag.ToString();
+	for (const FCytraPanelStat& Stat : Stats)
+	{
+		Result += FString::Printf(TEXT("|S%s:%s"), *Stat.Label.ToString(), *Stat.Value.ToString());
+	}
 	for (const FCytraPanelLine& Line : Lines)
 	{
 		Result += FString::Printf(TEXT("|L%d:%s:%s:%s"), static_cast<int32>(Line.Style), *Line.Text.ToString(),

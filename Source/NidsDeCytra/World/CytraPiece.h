@@ -12,7 +12,7 @@ class UStaticMeshComponent;
 struct FCytraLook;
 
 /**
- * A moving piece of the match shown as an engine basic shape: an enemy or a worker.
+ * A piece of the match shown as engine basic shapes: an enemy, a worker or a tower.
  * It does not tick: the game mode places it after each frame of simulation.
  */
 UCLASS(Abstract)
@@ -24,9 +24,18 @@ public:
 	ACytraPiece();
 
 	/** Sets shape, color and size. The shape rests on the actor location. */
-	void SetLook(const FCytraLook& Look, float CellSize);
+	virtual void SetLook(const FCytraLook& Look, float CellSize);
 
 protected:
+	/** Gives Component the shape and a flat color of Look. False if the shape or the material is missing. */
+	bool ApplyLook(UStaticMeshComponent& Component, const FCytraLook& Look);
+
+	/** A flat-colored copy of the base material, owned by this actor. */
+	UMaterialInterface* MakeColor(const FLinearColor& Color);
+
+	/** A component of this actor without collision, attached to Parent. Constructor only. */
+	UStaticMeshComponent* CreatePart(FName Name, USceneComponent* Parent);
+
 	UPROPERTY(VisibleAnywhere, Category = "Cytra")
 	TObjectPtr<UStaticMeshComponent> Body;
 
