@@ -92,6 +92,8 @@ struct NIDSDECYTRA_API FCytraBalance
 	double WorkerSpeed = 0.0;
 	/** Workers present at the start, in creation order. */
 	TArray<FName> StartRoles;
+	/** Share of its specialty's recruitment cost paid back when a worker is dismissed. */
+	double DismissRefund = 0.0;
 
 	TMap<FName, FCytraRoleDef> Roles;
 	TMap<FName, FCytraWorkDef> Works;
