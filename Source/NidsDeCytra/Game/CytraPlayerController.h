@@ -28,6 +28,9 @@ public:
 	/** Order from the interface on the selected cell. */
 	void OrderOnSelection(const FCytraOrderAction& Action);
 
+	/** The order panel points at a tower type, or at none: an empty selected slot shows its range. */
+	void PreviewTower(FName Tower);
+
 	/** Selects a cell of the board, or clears the selection. */
 	void SelectCell(const TOptional<FIntPoint>& Cell);
 	const TOptional<FIntPoint>& GetSelectedCell() const { return SelectedCell; }

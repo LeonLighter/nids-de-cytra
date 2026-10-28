@@ -22,11 +22,21 @@ public:
 	/** Binds the click event; Callback runs on each click. */
 	void SetCallback(TFunction<void()> InCallback);
 
+	/** Binds the hover events; Callback runs with true when the cursor enters, false when it leaves. */
+	void SetHoverCallback(TFunction<void(bool)> InCallback);
+
 private:
 	UFUNCTION()
 	void HandleClicked();
 
+	UFUNCTION()
+	void HandleHovered();
+
+	UFUNCTION()
+	void HandleUnhovered();
+
 	TFunction<void()> Callback;
+	TFunction<void(bool)> HoverCallback;
 };
 
 /**

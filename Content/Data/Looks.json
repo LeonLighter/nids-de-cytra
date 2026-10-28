@@ -9,5 +9,10 @@
     "Miner": { "shape": "Cylinder", "color": "e3b341", "size": 0.3 },
     "Carpenter": { "shape": "Cylinder", "color": "d17f45", "size": 0.3 },
     "Engineer": { "shape": "Cone", "color": "5cc4cc", "size": 0.3 }
+  },
+  "towers": {
+    "Ballista": { "base": { "shape": "Cylinder", "color": "6b4a2b", "size": 0.55 }, "top": { "shape": "Cube", "color": "e0cfa6", "size": 0.58 }, "aims": true },
+    "Mortar": { "base": { "shape": "Cylinder", "color": "3a404a", "size": 0.62 }, "top": { "shape": "Cylinder", "color": "07090c", "size": 0.32 } },
+    "Coil": { "base": { "shape": "Cylinder", "color": "7c4f25", "size": 0.6 }, "top": { "shape": "Sphere", "color": "8fe9f2", "size": 0.22 } }
   }
 }

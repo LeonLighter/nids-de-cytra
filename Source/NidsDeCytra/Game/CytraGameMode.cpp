@@ -22,6 +22,8 @@
 #include "World/CytraEnemy.h"
 #include "World/CytraMarkers.h"
 #include "World/CytraNest.h"
+#include "World/CytraShots.h"
+#include "World/CytraTower.h"
 #include "World/CytraWorker.h"
 
 #if !UE_BUILD_SHIPPING
@@ -86,7 +88,9 @@ void ACytraGameMode::Tick(float DeltaSeconds)
 		Match->Step(StepSeconds);
 		StepAccumulator -= StepSeconds;
 	}
+	FrameSeconds = DeltaSeconds;
 	SyncView();
+	FrameSeconds = 0.0f;
 }
 
 ACytraBoard* ACytraGameMode::GetOrCreateBoard()
@@ -130,6 +134,7 @@ bool ACytraGameMode::CreateMatch()
 	const FVector NestLocation = Board->CellToWorld(NestCell) + FVector(0.0f, 0.0f, Board->GetTileHeight(Board->GetMap().Get(NestCell)));
 	Nest = GetWorld()->SpawnActor<ACytraNest>(NestLocation, FRotator::ZeroRotator, Params);
 	Markers = GetWorld()->SpawnActor<ACytraMarkers>(Params);
+	Shots = GetWorld()->SpawnActor<ACytraShots>(Params);
 	StepAccumulator = 0.0;
 	LastPhase = Match->GetPhase();
 	LastWave = Match->GetWave();
@@ -175,10 +180,56 @@ FCytraOrderResult ACytraGameMode::Order(const FIntPoint& Cell, const FCytraOrder
 
 void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
 {
+	SelectedCell = Cell;
+	PreviewTower = NAME_None;
 	if (Markers && Board)
 	{
 		Markers->ShowSelection(*Board, Cell);
 	}
+	SyncRange();
+}
+
+void ACytraGameMode::ShowPreviewTower(FName Tower)
+{
+	PreviewTower = Tower;
+	SyncRange();
+}
+
+void ACytraGameMode::SyncRange()
+{
+	if (!Match || !Markers || !Board)
+	{
+		return;
+	}
+	TOptional<FIntPoint> Cell;
+	double Range = 0.0;
+	bool bDashed = false;
+	const FCytraGrid& Grid = Match->GetGrid();
+	const FCytraBalance& Balance = Match->GetBalance();
+	if (SelectedCell && Grid.GetMap().IsInside(*SelectedCell) && IsCytraSlot(Grid.GetType(*SelectedCell)) && !Balance.Towers.IsEmpty())
+	{
+		Cell = SelectedCell;
+		const bool bHighSlot = Grid.GetType(*SelectedCell) == ECytraTileType::HighSlot;
+		if (const FCytraTower* Tower = Grid.GetTower(*SelectedCell))
+		{
+			Range = Balance.TowerStats(Tower->Type, Tower->Level, bHighSlot).Range;
+		}
+		else
+		{
+			// As in the prototype: the tower pointed at in the panel, else the first one, even while another is being built.
+			const FName Type = Balance.Towers.Contains(PreviewTower) ? PreviewTower : Balance.Towers.CreateConstIterator()->Key;
+			Range = Balance.TowerStats(Type, 1, bHighSlot).Range;
+			bDashed = true;
+		}
+	}
+	if (Cell == ShownRangeCell && Range == ShownRange && bDashed == bShownRangeDashed)
+	{
+		return;
+	}
+	ShownRangeCell = Cell;
+	ShownRange = Range;
+	bShownRangeDashed = bDashed;
+	Markers->ShowRange(*Board, Cell, Range, bDashed);
 }
 
 void ACytraGameMode::KillAllEnemies()
@@ -214,8 +265,12 @@ void ACytraGameMode::SyncView()
 	}
 	SyncEnemies();
 	SyncWorkers();
-	// Shown from the next commit; drained meanwhile so they do not pile up.
-	Match->ConsumeEffects();
+	SyncTowers();
+	if (Shots)
+	{
+		Shots->Show(*Board, Match->GetShots(), Match->ConsumeEffects(), FrameSeconds);
+	}
+	SyncRange();
 	if (Markers)
 	{
 		Markers->ShowJobs(*Board, Match->GetJobs());
@@ -249,6 +304,7 @@ void ACytraGameMode::SyncEnemies()
 		if (Actor)
 		{
 			Actor->SetActorLocation(Board->GridToWorld(Enemy.Position) + FVector(0.0f, 0.0f, RoadHeight));
+			Actor->ShowStatus(Enemy.MaxHp > 0 ? static_cast<float>(Enemy.Hp / Enemy.MaxHp) : 1.0f, Enemy.IsSlowed(Match->GetTime()));
 		}
 	}
 
@@ -288,6 +344,81 @@ void ACytraGameMode::SyncWorkers()
 		const float Height = Board->GetTileHeight(Board->GetMap().Get(Cell));
 		Actor->SetActorLocation(Board->GridToWorld(Worker.Position + Offset) + FVector(0.0f, 0.0f, Height));
 	}
+}
+
+void ACytraGameMode::SyncTowers()
+{
+	struct FShown
+	{
+		FName Type;
+		int32 Level = 0;
+		double Aim = 0.0;
+		float Scale = 1.0f;
+	};
+	TMap<FIntPoint, FShown> Wanted;
+	for (const FCytraTowerGun& Gun : Match->GetTowers())
+	{
+		if (const FCytraTower* Tower = Match->GetGrid().GetTower(Gun.Cell))
+		{
+			Wanted.Add(Gun.Cell, FShown{ Tower->Type, Tower->Level, Gun.Aim, 1.0f });
+		}
+	}
+	for (const FCytraJob& Job : Match->GetJobs())
+	{
+		if (Job.Kind == ECytraOrderKind::Build)
+		{
+			// A quarter of the size at the order, then a quarter more for every quarter of the job done.
+			const double Done = Job.Time > 0.0 ? Job.Progress / Job.Time : 1.0;
+			const float Scale = 0.25f * FMath::Min(4, 1 + FMath::FloorToInt32(Done * 4.0));
+			Wanted.Add(Job.Cell, FShown{ Job.Type, 0, 0.0, Scale });
+		}
+	}
+
+	for (auto It = TowerActors.CreateIterator(); It; ++It)
+	{
+		const FShown* Shown = Wanted.Find(It.Key());
+		if (!Shown || !It.Value() || It.Value()->GetType() != Shown->Type)
+		{
+			if (It.Value())
+			{
+				It.Value()->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
+	for (const TPair<FIntPoint, FShown>& Entry : Wanted)
+	{
+		TObjectPtr<ACytraTower>& Actor = TowerActors.FindOrAdd(Entry.Key);
+		if (!Actor)
+		{
+			Actor = SpawnTower(Entry.Key, Entry.Value.Type);
+		}
+		if (Actor)
+		{
+			// Grid angle to world yaw: the board maps grid axes onto world axes.
+			const FVector2d Direction(FMath::Cos(Entry.Value.Aim), FMath::Sin(Entry.Value.Aim));
+			const FVector World = Board->GridToWorld(Direction) - Board->GridToWorld(FVector2d::ZeroVector);
+			Actor->ShowState(Entry.Value.Level, static_cast<float>(World.Rotation().Yaw), Entry.Value.Scale);
+		}
+	}
+}
+
+ACytraTower* ACytraGameMode::SpawnTower(const FIntPoint& Cell, FName Type)
+{
+	if (!Looks.Towers.Contains(Type))
+	{
+		UE_LOG(LogCytra, Warning, TEXT("Match: no look for tower %s in %s, using the default shapes"), *Type.ToString(), *LooksFile);
+	}
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	const FVector Location = Board->CellToWorld(Cell) + FVector(0.0f, 0.0f, Board->GetTileHeight(Board->GetMap().Get(Cell)));
+	ACytraTower* Actor = GetWorld()->SpawnActor<ACytraTower>(Location, FRotator::ZeroRotator, Params);
+	if (Actor)
+	{
+		Actor->SetTowerLook(Type, Looks.TowerLook(Type), ACytraBoard::CellSize);
+	}
+	return Actor;
 }
 
 ACytraEnemy* ACytraGameMode::SpawnEnemy(FName Type)

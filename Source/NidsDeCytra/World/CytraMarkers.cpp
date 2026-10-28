@@ -124,3 +124,28 @@ void ACytraMarkers::ShowSelection(const ACytraBoard& Board, const TOptional<FInt
 	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center + FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
 	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center - FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
 }
+
+void ACytraMarkers::ShowRange(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell, double Radius, bool bDashed)
+{
+	// Range circle of the web prototype: a 1.5-pixel orange line, dashed 6 on 5 pixels for a tower not built yet.
+	constexpr float LineWidth = 1.5f / 40.0f;
+	constexpr int32 Segments = 64;
+	/** Dash length of about 6 pixels: the number of segments follows the circumference. */
+	constexpr float DashLength = 6.0f / 40.0f;
+
+	if (!RangeRing)
+	{
+		RangeRing = MakeBoxes(TEXT("RangeRing"), TEXT("f0a04b"));
+	}
+	RangeRing->ClearInstances();
+	if (!Cell || Radius <= 0.0)
+	{
+		return;
+	}
+	const float CellSize = ACytraBoard::CellSize;
+	const float RadiusWorld = static_cast<float>(Radius) * CellSize;
+	const int32 Count = bDashed ? FMath::Max(16, 2 * FMath::RoundToInt32(PI * static_cast<float>(Radius) / DashLength)) : Segments;
+	// Above the rock, the highest tile, so that the circle reads over the whole board as in the prototype.
+	const FVector Center = Board.CellToWorld(*Cell) + FVector(0.0f, 0.0f, Board.GetTileHeight(ECytraTileType::Rock) + FrameLift);
+	CytraShapes::AddRing(*RangeRing, Center, RadiusWorld, LineWidth * CellSize, FrameThickness, Count, bDashed);
+}

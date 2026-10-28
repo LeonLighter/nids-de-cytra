@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+class UInstancedStaticMeshComponent;
+
 /** Helpers for the placeholder visuals built from engine basic shapes. */
 namespace CytraShapes
 {
@@ -15,4 +17,13 @@ namespace CytraShapes
 	{
 		return FLinearColor::FromSRGBColor(FColor::FromHex(Hex));
 	}
+
+	/**
+	 * Adds a flat horizontal ring of cube instances around Center, in world units.
+	 * With bDashed, every other segment is left out.
+	 */
+	void AddRing(UInstancedStaticMeshComponent& Boxes, const FVector& Center, float Radius, float Width, float Thickness, int32 Segments, bool bDashed = false);
+
+	/** Adds a flat cube instance from From to To, Width wide and Thickness thick, in world units. */
+	void AddSegment(UInstancedStaticMeshComponent& Boxes, const FVector& From, const FVector& To, float Width, float Thickness);
 }

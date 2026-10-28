@@ -15,10 +15,7 @@ ACytraPiece::ACytraPiece()
 	PrimaryActorTick.bCanEverTick = false;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
-	Body = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body"));
-	Body->SetupAttachment(RootComponent);
-	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Body->SetGenerateOverlapEvents(false);
+	Body = CreatePart(TEXT("Body"), RootComponent);
 
 	for (const TCHAR* Shape : FCytraLooks::Shapes)
 	{
@@ -29,20 +26,41 @@ ACytraPiece::ACytraPiece()
 	BaseMaterial = MaterialFinder.Object;
 }
 
-void ACytraPiece::SetLook(const FCytraLook& Look, float CellSize)
+UStaticMeshComponent* ACytraPiece::CreatePart(FName Name, USceneComponent* Parent)
+{
+	UStaticMeshComponent* Part = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+	Part->SetupAttachment(Parent);
+	Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Part->SetGenerateOverlapEvents(false);
+	return Part;
+}
+
+UMaterialInterface* ACytraPiece::MakeColor(const FLinearColor& Color)
+{
+	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+	Material->SetVectorParameterValue(TEXT("Color"), Color);
+	return Material;
+}
+
+bool ACytraPiece::ApplyLook(UStaticMeshComponent& Component, const FCytraLook& Look)
 {
 	const TObjectPtr<UStaticMesh>* Mesh = ShapeMeshes.Find(Look.Shape);
 	if (!Mesh || !*Mesh || !BaseMaterial)
 	{
 		UE_LOG(LogCytra, Warning, TEXT("Piece: shape %s or base material not found"), *Look.Shape.ToString());
+		return false;
+	}
+	Component.SetStaticMesh(*Mesh);
+	Component.SetMaterial(0, MakeColor(Look.Color));
+	return true;
+}
+
+void ACytraPiece::SetLook(const FCytraLook& Look, float CellSize)
+{
+	if (!ApplyLook(*Body, Look))
+	{
 		return;
 	}
-	Body->SetStaticMesh(*Mesh);
-
-	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-	Material->SetVectorParameterValue(TEXT("Color"), Look.Color);
-	Body->SetMaterial(0, Material);
-
 	const float Size = static_cast<float>(Look.Size) * CellSize;
 	Body->SetRelativeScale3D(FVector(Size / CytraShapes::Size));
 	Body->SetRelativeLocation(FVector(0.0f, 0.0f, Size * 0.5f));

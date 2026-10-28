@@ -40,6 +40,29 @@ void UCytraPanelButton::HandleClicked()
 	}
 }
 
+void UCytraPanelButton::SetHoverCallback(TFunction<void(bool)> InCallback)
+{
+	HoverCallback = MoveTemp(InCallback);
+	OnHovered.AddUniqueDynamic(this, &UCytraPanelButton::HandleHovered);
+	OnUnhovered.AddUniqueDynamic(this, &UCytraPanelButton::HandleUnhovered);
+}
+
+void UCytraPanelButton::HandleHovered()
+{
+	if (HoverCallback)
+	{
+		HoverCallback(true);
+	}
+}
+
+void UCytraPanelButton::HandleUnhovered()
+{
+	if (HoverCallback)
+	{
+		HoverCallback(false);
+	}
+}
+
 void UCytraOrderPanel::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -102,7 +125,7 @@ void UCytraOrderPanel::Refresh()
 {
 	const ACytraGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACytraGameMode>() : nullptr;
 	const FCytraMatch* Match = GameMode ? GameMode->GetMatch() : nullptr;
-	const ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>();
+	ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>();
 	if (!Match || !Controller || !Content)
 	{
 		return;
@@ -116,6 +139,8 @@ void UCytraOrderPanel::Refresh()
 	}
 	ShownSignature = MoveTemp(Signature);
 
+	// The buttons are rebuilt: the one under the cursor may never report that it was left.
+	Controller->PreviewTower(NAME_None);
 	Content->ClearChildren();
 	AddTitle(View);
 	int32 StepNumber = 0;
@@ -228,9 +253,21 @@ void UCytraOrderPanel::AddAction(const FCytraPanelAction& Action)
 	Body->AddChildToVerticalBox(MakeText(14, Palette.Mist, false, Action.Meta));
 	if (!Action.IsEnabled())
 	{
+		// Dimmed but not disabled, as in the prototype: it still shows the range of its tower under the cursor,
+		// and a click is refused by the rules.
 		Body->AddChildToVerticalBox(MakeText(14, Palette.Warning, false, Action.Refusal));
-		Button->SetIsEnabled(false);
 		Button->SetRenderOpacity(RefusedOpacity);
+	}
+	if (Order.Kind == ECytraOrderKind::Build)
+	{
+		const FName Tower = Order.Id;
+		Button->SetHoverCallback([this, Tower](bool bHovered)
+		{
+			if (ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>())
+			{
+				Controller->PreviewTower(bHovered ? Tower : NAME_None);
+			}
+		});
 	}
 
 	Cast<UButtonSlot>(Button->SetContent(Body))->SetPadding(FMargin(12.0f, 9.0f));

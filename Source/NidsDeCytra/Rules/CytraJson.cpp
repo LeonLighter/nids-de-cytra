@@ -67,6 +67,21 @@ namespace CytraJson
 		return true;
 	}
 
+	bool FReader::OptionalBool(const TCHAR* Field, bool& Out) const
+	{
+		const TSharedPtr<FJsonValue> Value = Obj.TryGetField(Field);
+		if (!Value.IsValid())
+		{
+			return true;
+		}
+		if (Value->Type != EJson::Boolean)
+		{
+			return Fail(Field, TEXT("must be true or false"));
+		}
+		Out = Value->AsBool();
+		return true;
+	}
+
 	bool FReader::Integer(const TCHAR* Field, int32& Out) const
 	{
 		if (!Obj.HasField(Field))
