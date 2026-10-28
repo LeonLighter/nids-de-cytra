@@ -178,6 +178,25 @@ FCytraOrderResult ACytraGameMode::Order(const FIntPoint& Cell, const FCytraOrder
 	return Result;
 }
 
+FCytraRecruitCheck ACytraGameMode::Recruit(FName Specialty)
+{
+	if (!Match)
+	{
+		return FCytraRecruitCheck();
+	}
+	const FCytraRecruitCheck Result = Match->Recruit(Specialty);
+	if (Result.IsAccepted())
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: %s recruited, -%d gold, crew of %d"), *Specialty.ToString(), Result.Cost, Match->GetWorkers().Num());
+	}
+	else
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: recruiting %s refused (%d)"), *Specialty.ToString(), static_cast<int32>(Result.Refusal));
+	}
+	SyncView();
+	return Result;
+}
+
 void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
 {
 	SelectedCell = Cell;

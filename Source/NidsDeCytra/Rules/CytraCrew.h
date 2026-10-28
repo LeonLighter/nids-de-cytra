@@ -85,6 +85,8 @@ struct FCytraRecruitCheck
 	ECytraRecruitRefusal Refusal = ECytraRecruitRefusal::None;
 	int32 Cost = 0;
 	int32 MissingGold = 0;
+	/** Crew size limit, for the refusal message. */
+	int32 MaxCrew = 0;
 	/** Id of the recruit, once recruited. */
 	int32 Worker = 0;
 

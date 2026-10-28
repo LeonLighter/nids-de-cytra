@@ -32,6 +32,7 @@ namespace
 	// Opened accesses and slot marks, after the web prototype (sizes converted from its 40-pixel cells).
 	const TCHAR* const BridgeColor = TEXT("a67a45");
 	const TCHAR* const LadderColor = TEXT("d6a868");
+	const TCHAR* const MineGoldColor = TEXT("f2cf63");
 	const TCHAR* const ReachableColor = TEXT("f0a04b");
 	const TCHAR* const CutOffColor = TEXT("9ca8b8");
 	constexpr float BridgeWidth = 22.0f / 40.0f;
@@ -254,8 +255,28 @@ void ACytraBoard::ShowOpened(const FIntPoint& Cell)
 		GetOrCreateOverlay(TEXT("Opened_OutpostSite"), TileMesh, TileColors.FindRef(ECytraTileType::Camp))
 			->AddInstance(CellBox(Cell, Footprint, Footprint, 0.0f, GetTileHeight(Type)));
 		break;
+	case ECytraTileType::Mine:
+	{
+		// Open: gold nuggets in the gallery mouth, after the prototype (pixel offsets from the cell centre, and radii).
+		struct FNugget
+		{
+			float East;
+			float South;
+			float Radius;
+		};
+		const FNugget Nuggets[] = { { -6.0f, 5.0f, 2.4f }, { 5.0f, 0.0f, 2.0f }, { 1.0f, 9.0f, 2.8f }, { 8.0f, 8.0f, 1.8f }, { -3.0f, -1.0f, 1.6f } };
+		UInstancedStaticMeshComponent* Gold = GetOrCreateOverlay(TEXT("MineGold"), DiscMesh, CytraShapes::FromHex(MineGoldColor));
+		const float Top = GetTileHeight(Type);
+		for (const FNugget& Nugget : Nuggets)
+		{
+			const float Diameter = 2.0f * Nugget.Radius / 40.0f * CellSize;
+			// Grid east is local +Y and grid south is local -X.
+			const FVector Center = CellToLocal(Cell) + FVector(-Nugget.South / 40.0f * CellSize, Nugget.East / 40.0f * CellSize, Top + Diameter * 0.25f);
+			Gold->AddInstance(FTransform(FQuat::Identity, Center, FVector(Diameter, Diameter, Diameter * 0.5f) / CytraShapes::Size));
+		}
+		break;
+	}
 	default:
-		// The open mine is shown in J50.
 		break;
 	}
 }

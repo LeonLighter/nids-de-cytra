@@ -294,6 +294,41 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 	return View;
 }
 
+FCytraPanelView FCytraPanelView::BuildCrew(const FCytraMatch& Match)
+{
+	const FCytraBalance& Balance = Match.GetBalance();
+	FCytraPanelView View;
+	View.Title = CytraText::Get(TEXT("Crew.Title"));
+	View.TitleNote = FText::Format(CytraText::Get(TEXT("Crew.Count")), Match.GetWorkers().Num(), Balance.MaxCrew);
+	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
+	{
+		const FCytraRecruitCheck Check = Match.CheckRecruit(Role.Key);
+		FCytraPanelAction& Entry = View.Actions.AddDefaulted_GetRef();
+		Entry.Recruit = Role.Key;
+		Entry.Name = FText::Format(CytraText::Get(TEXT("Crew.Recruit")), RoleShort(Role.Key));
+		Entry.Cost = FText::Format(CytraText::Get(TEXT("Panel.Cost")), Role.Value.RecruitCost);
+		Entry.Meta = FText::Format(CytraText::Get(TEXT("Crew.Spec")), CytraText::Get(FString::Printf(TEXT("Role.%s.Spec"), *Role.Key.ToString())));
+		Entry.Refusal = RecruitRefusalText(Check);
+	}
+	return View;
+}
+
+FText FCytraPanelView::RecruitRefusalText(const FCytraRecruitCheck& Check)
+{
+	switch (Check.Refusal)
+	{
+	case ECytraRecruitRefusal::None:
+		return FText::GetEmpty();
+	case ECytraRecruitRefusal::UnknownRole:
+		return CytraText::Get(TEXT("Refusal.NotAvailableHere"));
+	case ECytraRecruitRefusal::CrewFull:
+		return FText::Format(CytraText::Get(TEXT("Refusal.CrewFull")), Check.MaxCrew);
+	case ECytraRecruitRefusal::NotEnoughGold:
+		return FText::Format(CytraText::Get(TEXT("Refusal.NotEnoughGold")), Check.MissingGold);
+	}
+	return FText::GetEmpty();
+}
+
 FText FCytraPanelView::RefusalText(const FCytraOrderCheck& Check)
 {
 	switch (Check.Refusal)
@@ -330,7 +365,7 @@ FString FCytraPanelView::Signature() const
 	}
 	for (const FCytraPanelAction& Action : Actions)
 	{
-		Result += FString::Printf(TEXT("|A%s:%s:%s:%s:%s"), *Action.Action.Id.ToString(), *Action.Name.ToString(), *Action.Cost.ToString(),
+		Result += FString::Printf(TEXT("|A%s%s:%s:%s:%s:%s"), *Action.Recruit.ToString(), *Action.Action.Id.ToString(), *Action.Name.ToString(), *Action.Cost.ToString(),
 			*Action.Meta.ToString(), *Action.Refusal.ToString());
 	}
 	return Result;

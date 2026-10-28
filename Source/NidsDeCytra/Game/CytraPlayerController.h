@@ -28,6 +28,9 @@ public:
 	/** Order from the interface on the selected cell. */
 	void OrderOnSelection(const FCytraOrderAction& Action);
 
+	/** Order from the interface: recruit a worker of this specialty. */
+	void Recruit(FName Specialty);
+
 	/** The order panel points at a tower type, or at none: an empty selected slot shows its range. */
 	void PreviewTower(FName Tower);
 

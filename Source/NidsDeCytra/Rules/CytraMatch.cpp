@@ -391,6 +391,7 @@ FCytraOrderResult FCytraMatch::Order(const FIntPoint& Cell, const FCytraOrderAct
 FCytraRecruitCheck FCytraMatch::CheckRecruit(FName Role) const
 {
 	FCytraRecruitCheck Result;
+	Result.MaxCrew = Balance.MaxCrew;
 	const FCytraRoleDef* Def = Balance.Roles.Find(Role);
 	if (!Def)
 	{

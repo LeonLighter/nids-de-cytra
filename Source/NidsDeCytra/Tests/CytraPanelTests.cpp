@@ -424,6 +424,53 @@ bool FCytraPanelMineTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraPanelCrewTest, "Cytra.UI.Panel.Crew", CytraTest::Flags)
+
+bool FCytraPanelCrewTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+
+	const FCytraPanelView Start = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Title"), Start.Title.ToString(), FString(TEXT("Équipe")));
+	TestEqual(TEXT("Size"), Start.TitleNote.ToString(), FString(TEXT("2/8")));
+	if (!TestEqual(TEXT("One button per specialty"), Start.Actions.Num(), 3))
+	{
+		return false;
+	}
+	const FCytraPanelAction& Miner = Start.Actions[0];
+	TestEqual(TEXT("Recruits a miner"), Miner.Recruit, FName(TEXT("Miner")));
+	TestEqual(TEXT("Miner name"), Miner.Name.ToString(), FString(TEXT("Recruter un mineur")));
+	TestEqual(TEXT("Miner cost"), Miner.Cost.ToString(), FString(TEXT("40 or")));
+	TestEqual(TEXT("Miner details"), Miner.Meta.ToString(), FString(TEXT("Spécialité : déblayage, mine d’or")));
+	TestTrue(TEXT("Miner recruitable"), Miner.IsEnabled());
+	TestEqual(TEXT("Engineer name"), Start.Actions[2].Name.ToString(), FString(TEXT("Recruter un ingénieur")));
+	TestEqual(TEXT("Engineer details"), Start.Actions[2].Meta.ToString(), FString(TEXT("Spécialité : ingénierie")));
+
+	// 170 gold: an engineer, a miner and a carpenter leave 20, short of 30 for another carpenter.
+	Match->Recruit(TEXT("Engineer"));
+	Match->Recruit(TEXT("Miner"));
+	Match->Recruit(TEXT("Carpenter"));
+	const FCytraPanelView Poor = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Size after recruiting"), Poor.TitleNote.ToString(), FString(TEXT("5/8")));
+	TestEqual(TEXT("Carpenter too expensive"), Poor.Actions[1].Refusal.ToString(), FString(TEXT("Il manque 30 or")));
+	TestNotEqual(TEXT("Signature changes"), Poor.Signature(), Start.Signature());
+
+	const TArray<FName> Full = { TEXT("Carpenter"), TEXT("Miner"), TEXT("Engineer"), TEXT("Carpenter"), TEXT("Miner"), TEXT("Engineer"), TEXT("Carpenter"), TEXT("Miner") };
+	Match = MakeMatch(*this, &Full);
+	if (!Match)
+	{
+		return false;
+	}
+	const FCytraPanelView Complete = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Full size"), Complete.TitleNote.ToString(), FString(TEXT("8/8")));
+	TestEqual(TEXT("Crew full"), Complete.Actions[0].Refusal.ToString(), FString(TEXT("Équipe complète (8)")));
+	return true;
+}
+
 } // namespace CytraPanelTest
 
 #endif

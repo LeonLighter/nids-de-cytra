@@ -40,9 +40,9 @@ private:
 };
 
 /**
- * Order panel on the right of the screen: what the selected cell is and the orders it takes, with their cost,
- * specialty, duration and, when refused, the reason. Built in C++, no widget blueprint.
- * It redraws when the selection or the match changes, and only if its content differs.
+ * Column on the right of the screen, in two cards. The order card shows what the selected cell is and the orders it takes,
+ * with their cost, specialty, duration and, when refused, the reason. The crew card below has the recruitment buttons.
+ * Built in C++, no widget blueprint. Each card redraws when the selection or the match changes, and only if its content differs.
  */
 UCLASS()
 class NIDSDECYTRA_API UCytraOrderPanel : public UUserWidget
@@ -59,9 +59,13 @@ private:
 	void QueueRefresh();
 	void Refresh();
 
-	void AddTitle(const FCytraPanelView& View);
-	void AddLine(const FCytraPanelLine& Line, int32 StepNumber);
-	void AddAction(const FCytraPanelAction& Action);
+	/** A card with its background in Column. Returns the box its content goes in. */
+	UVerticalBox* AddCard(UVerticalBox* Column, const TCHAR* Name);
+	/** Replaces the content of a card. */
+	void ShowCard(UVerticalBox* Box, const FCytraPanelView& View);
+	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View);
+	void AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber);
+	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action);
 	UTextBlock* MakeText(int32 Size, const FLinearColor& Color, bool bBold, const FText& Text);
 	UCytraPanelButton* MakeButton(const FLinearColor& Background, TFunction<void()> Callback);
 
@@ -69,10 +73,15 @@ private:
 	UFUNCTION()
 	FEventReply HandleBackgroundMouseDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
 
+	/** Content of the order card. */
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> Content;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> CrewContent;
+
 	FString ShownSignature;
+	FString ShownCrewSignature;
 	bool bRefreshQueued = false;
 	FDelegateHandle MatchChangedHandle;
 	FDelegateHandle SelectionChangedHandle;
