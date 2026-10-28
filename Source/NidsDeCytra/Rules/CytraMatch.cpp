@@ -88,7 +88,8 @@ void FCytraMatch::Step(double Dt)
 	}
 
 	MoveEnemies(Dt);
-	// Towers and their shots come here (J40).
+	FireTowers(Dt);
+	MoveShots(Dt);
 	Enemies.RemoveAll([](const FCytraEnemy& Enemy) { return Enemy.bDead; });
 	StepWorkers(Dt);
 	Manage();
@@ -172,7 +173,7 @@ void FCytraMatch::MoveEnemies(double Dt)
 			continue;
 		}
 		const FCytraRoutePath& Path = Routes[Enemy.Route];
-		Enemy.Distance += Enemy.Speed * Dt;
+		Enemy.Distance += Enemy.SpeedAt(Time) * Dt;
 		if (Enemy.Distance >= Path.GetLength())
 		{
 			// Reaching the nest destroys eggs but pays nothing.
@@ -192,18 +193,160 @@ void FCytraMatch::MoveEnemies(double Dt)
 
 void FCytraMatch::DamageEnemy(int32 EnemyId, double Damage)
 {
-	FCytraEnemy* Enemy = Enemies.FindByPredicate([EnemyId](const FCytraEnemy& E) { return E.Id == EnemyId; });
-	if (!Enemy || Enemy->bDead)
+	if (FCytraEnemy* Enemy = Enemies.FindByPredicate([EnemyId](const FCytraEnemy& E) { return E.Id == EnemyId; }))
+	{
+		Hit(*Enemy, Damage);
+	}
+}
+
+void FCytraMatch::Hit(FCytraEnemy& Enemy, double Damage)
+{
+	if (Enemy.bDead)
 	{
 		return;
 	}
-	Enemy->Hp -= Damage;
-	if (Enemy->Hp <= 0.0)
+	Enemy.Hp -= Damage;
+	if (Enemy.Hp <= 0.0)
 	{
-		Enemy->bDead = true;
-		Wallet.Earn(Enemy->Gold);
+		Enemy.bDead = true;
+		Wallet.Earn(Enemy.Gold);
 		++Kills;
 	}
+}
+
+void FCytraMatch::FireTowers(double Dt)
+{
+	TArray<FCytraEnemy*> InRange;
+	for (FCytraTowerGun& Gun : Towers)
+	{
+		Gun.Cooldown -= Dt;
+		if (Gun.Cooldown > 0.0)
+		{
+			continue;
+		}
+		const FCytraTower& Tower = *Grid.GetTower(Gun.Cell);
+		const FCytraTowerDef& Def = Balance.Towers.FindChecked(Tower.Type);
+		const FCytraTowerStats Stats = Balance.TowerStats(Tower.Type, Tower.Level, Grid.GetType(Gun.Cell) == ECytraTileType::HighSlot);
+		const FVector2d Origin(Gun.Cell.X, Gun.Cell.Y);
+
+		InRange.Reset();
+		for (FCytraEnemy& Enemy : Enemies)
+		{
+			if (!Enemy.bDead && Enemy.Position.X >= Balance.TargetingMinX && FVector2d::Distance(Enemy.Position, Origin) <= Stats.Range)
+			{
+				InRange.Add(&Enemy);
+			}
+		}
+		if (InRange.IsEmpty())
+		{
+			// Without a target the tower stays ready.
+			Gun.Cooldown = 0.0;
+			continue;
+		}
+		// Most advanced first. Stable, like the sort of the prototype.
+		InRange.StableSort([](const FCytraEnemy& A, const FCytraEnemy& B) { return A.Distance > B.Distance; });
+
+		FCytraEnemy& Target = *InRange[0];
+		const FVector2d ToTarget = Target.Position - Origin;
+		Gun.Aim = FMath::Atan2(ToTarget.Y, ToTarget.X);
+		Gun.Cooldown = 1.0 / Stats.Rate;
+
+		switch (Def.Behavior)
+		{
+		case ECytraTowerBehavior::Bolt:
+		{
+			FCytraShot& Shot = Shots.AddDefaulted_GetRef();
+			Shot.Kind = ECytraShotKind::Bolt;
+			Shot.Tower = Tower.Type;
+			Shot.Damage = Stats.Damage;
+			Shot.Position = Origin;
+			Shot.Angle = Gun.Aim;
+			Shot.Speed = Def.BoltSpeed;
+			Shot.Target = Target.Id;
+			break;
+		}
+		case ECytraTowerBehavior::Shell:
+		{
+			// Aimed where the target will be when the shell lands, at its current speed.
+			const FCytraRoutePath& Path = Routes[Target.Route];
+			FCytraShot& Shot = Shots.AddDefaulted_GetRef();
+			Shot.Kind = ECytraShotKind::Shell;
+			Shot.Tower = Tower.Type;
+			Shot.Damage = Stats.Damage;
+			Shot.From = Origin;
+			Shot.To = Path.PositionAt(FMath::Min(Path.GetLength(), Target.Distance + Target.SpeedAt(Time) * Def.FlightTime));
+			Shot.Duration = Def.FlightTime;
+			Shot.Splash = Def.Splash;
+			break;
+		}
+		case ECytraTowerBehavior::Chain:
+			for (int32 Index = 0; Index < FMath::Min(Def.Targets, InRange.Num()); ++Index)
+			{
+				// The slow does not stack: a new hit only restarts it.
+				FCytraEnemy& Victim = *InRange[Index];
+				Victim.SlowUntil = Time + Def.SlowTime;
+				Victim.SlowFactor = Def.Slow;
+				FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+				Effect.Kind = ECytraEffectKind::Zap;
+				Effect.Tower = Tower.Type;
+				Effect.From = Origin;
+				Effect.To = Victim.Position;
+				Hit(Victim, Stats.Damage);
+			}
+			break;
+		}
+	}
+}
+
+void FCytraMatch::MoveShots(double Dt)
+{
+	for (FCytraShot& Shot : Shots)
+	{
+		if (Shot.Kind == ECytraShotKind::Bolt)
+		{
+			// A bolt whose target died before the impact vanishes without damage.
+			FCytraEnemy* Target = Enemies.FindByPredicate([&Shot](const FCytraEnemy& Enemy) { return Enemy.Id == Shot.Target; });
+			if (!Target || Target->bDead)
+			{
+				Shot.bDone = true;
+				continue;
+			}
+			const FVector2d Delta = Target->Position - Shot.Position;
+			const double Distance = Delta.Length();
+			const double Move = Shot.Speed * Dt;
+			Shot.Angle = FMath::Atan2(Delta.Y, Delta.X);
+			if (Distance <= Move)
+			{
+				Hit(*Target, Shot.Damage);
+				Shot.bDone = true;
+			}
+			else
+			{
+				Shot.Position += Delta / Distance * Move;
+			}
+		}
+		else
+		{
+			Shot.Elapsed += Dt;
+			if (Shot.Elapsed >= Shot.Duration)
+			{
+				Shot.bDone = true;
+				for (FCytraEnemy& Enemy : Enemies)
+				{
+					if (!Enemy.bDead && FVector2d::Distance(Enemy.Position, Shot.To) <= Shot.Splash)
+					{
+						Hit(Enemy, Shot.Damage);
+					}
+				}
+				FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+				Effect.Kind = ECytraEffectKind::Blast;
+				Effect.Tower = Shot.Tower;
+				Effect.To = Shot.To;
+				Effect.Radius = Shot.Splash;
+			}
+		}
+	}
+	Shots.RemoveAll([](const FCytraShot& Shot) { return Shot.bDone; });
 }
 
 FCytraOrderCheck FCytraMatch::CheckOrder(const FIntPoint& Cell, const FCytraOrderAction& Action) const
@@ -458,4 +601,9 @@ void FCytraMatch::Finish(int32 JobIndex, FCytraWorker& Worker)
 TArray<FCytraMatchEvent> FCytraMatch::ConsumeEvents()
 {
 	return MoveTemp(Events);
+}
+
+TArray<FCytraEffect> FCytraMatch::ConsumeEffects()
+{
+	return MoveTemp(Effects);
 }

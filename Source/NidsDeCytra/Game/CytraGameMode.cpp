@@ -214,6 +214,8 @@ void ACytraGameMode::SyncView()
 	}
 	SyncEnemies();
 	SyncWorkers();
+	// Shown from the next commit; drained meanwhile so they do not pile up.
+	Match->ConsumeEffects();
 	if (Markers)
 	{
 		Markers->ShowJobs(*Board, Match->GetJobs());
