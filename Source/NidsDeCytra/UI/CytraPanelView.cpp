@@ -168,6 +168,25 @@ namespace
 			FText::Format(CytraText::Get(TEXT("Panel.DismantleExtra")), Percent(Balance.DismantleRefund)), &Refund);
 	}
 
+	/** An open mine: the miners there, the income, the gold extracted so far, and whether a place is free. */
+	void BuildOpenMine(FCytraPanelView& View, const FCytraMatch& Match, ECytraTileType Type)
+	{
+		const FCytraBalance& Balance = Match.GetBalance();
+		const int32 Mining = Match.MinersMining();
+		const int32 Taken = Match.MinersAtMine();
+		View.Title = TileText(Type, TEXT("Title"));
+		View.TitleNote = FText::Format(CytraText::Get(TEXT("Panel.MineMiners")), Mining, Balance.MineSlots);
+		AddStat(View, TEXT("Panel.MineIncome"), FText::Format(CytraText::Get(TEXT("Panel.MineIncomeValue")), Mining * Balance.MineYield, FText::AsNumber(Balance.MinePeriod)));
+		AddStat(View, TEXT("Panel.MineMined"), FText::Format(CytraText::Get(TEXT("Panel.Cost")), Match.GetWallet().Mined));
+
+		const FText Places = Taken >= Balance.MineSlots ? FText::Format(CytraText::Get(TEXT("Panel.MineFull")), Balance.MineSlots)
+			: Taken > 0 ? CytraText::Get(TEXT("Panel.MinePlaceLeft"))
+			: CytraText::Get(TEXT("Panel.MineEmpty"));
+		// A miner still on the way takes a place before he extracts.
+		const TCHAR* State = Taken > Mining ? TEXT("Panel.MineStateComing") : TEXT("Panel.MineState");
+		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(CytraText::Get(State), Places));
+	}
+
 	void BuildSlot(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, ECytraTileType Type)
 	{
 		const FCytraGrid& Grid = Match.GetGrid();
@@ -251,12 +270,16 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 		AddLine(View, ECytraPanelLineStyle::Text, TileText(Type, TEXT("Desc")));
 		AddWorks(View, Match, *Cell, Type);
 	}
+	else if (Type == ECytraTileType::Mine && bOpened)
+	{
+		BuildOpenMine(View, Match, Type);
+	}
 	else if (Type == ECytraTileType::Mine)
 	{
-		// Opening and working the mine come in J50.
 		const FCytraBalance& Balance = Match.GetBalance();
 		View.Title = TileText(Type, TEXT("Title"));
 		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(TileText(Type, TEXT("Desc")), Balance.MineYield, FText::AsNumber(Balance.MinePeriod), Balance.MineSlots));
+		AddWorks(View, Match, *Cell, Type);
 	}
 	else if (Type == ECytraTileType::Nest)
 	{
