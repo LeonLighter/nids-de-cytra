@@ -121,13 +121,13 @@ bool FCytraPanelJobLifeTest::RunTest(const FString& Parameters)
 
 	const FCytraPanelView Before = Panel(*Match, Gap);
 	TestEqual(TEXT("Title"), Before.Title.ToString(), FString(TEXT("Gouffre")));
-	TestEqual(TEXT("Description"), LineText(Before, 0), FString(TEXT("Une faille coupe la corniche. Un charpentier peut y jeter un pont.")));
+	TestEqual(TEXT("Description"), LineText(Before, 0), FString(TEXT("Une faille coupe la corniche. Un charpentier peut y construire un pont.")));
 	if (!TestEqual(TEXT("One order"), Before.Actions.Num(), 1))
 	{
 		return false;
 	}
 	const FCytraPanelAction& Bridge = Before.Actions[0];
-	TestEqual(TEXT("Order name"), Bridge.Name.ToString(), FString(TEXT("Jeter un pont")));
+	TestEqual(TEXT("Order name"), Bridge.Name.ToString(), FString(TEXT("Construire un pont")));
 	TestEqual(TEXT("Order cost"), Bridge.Cost.ToString(), FString(TEXT("60 or")));
 	TestEqual(TEXT("Order details"), Bridge.Meta.ToString(), FString(TEXT("charpentier · 9 s de chantier")));
 	TestTrue(TEXT("Order accepted"), Bridge.IsEnabled());
@@ -135,7 +135,7 @@ bool FCytraPanelJobLifeTest::RunTest(const FString& Parameters)
 	Match->Order(Gap, Bridge.Action);
 	const FCytraPanelView Ordered = Panel(*Match, Gap);
 	TestTrue(TEXT("No order while the job runs"), Ordered.Actions.IsEmpty());
-	TestEqual(TEXT("Worker on the way"), LineText(Ordered, 1), FString(TEXT("Jeter un pont : commandé. Un charpentier est en route.")));
+	TestEqual(TEXT("Worker on the way"), LineText(Ordered, 1), FString(TEXT("Construire un pont : commandé. Un charpentier est en route.")));
 	TestTrue(TEXT("State style"), Ordered.Lines.Last().Style == ECytraPanelLineStyle::State);
 	TestNotEqual(TEXT("Signature changes"), Ordered.Signature(), Before.Signature());
 
@@ -143,7 +143,7 @@ bool FCytraPanelJobLifeTest::RunTest(const FString& Parameters)
 	{
 		Match->Step(Dt);
 	}
-	TestEqual(TEXT("Worker on site"), LineText(Panel(*Match, Gap), 1), FString(TEXT("Jeter un pont : commandé. Chantier en cours.")));
+	TestEqual(TEXT("Worker on site"), LineText(Panel(*Match, Gap), 1), FString(TEXT("Construire un pont : commandé. Chantier en cours.")));
 
 	for (int32 i = 0; i < 600; ++i)
 	{
@@ -172,7 +172,7 @@ bool FCytraPanelRefusalsTest::RunTest(const FString& Parameters)
 	Match->Order(FIntPoint(9, 6), Work(TEXT("Bridge")));
 	TestEqual(TEXT("Gold left"), Match->GetWallet().Gold, 40);
 	TestEqual(TEXT("Not enough gold"), Refusal(*Match, FIntPoint(7, 3)), FString(TEXT("Il manque 5 or")));
-	TestEqual(TEXT("Waiting job"), LineText(Panel(*Match, FIntPoint(9, 6)), 1), FString(TEXT("Jeter un pont : commandé. En attente d’un charpentier libre.")));
+	TestEqual(TEXT("Waiting job"), LineText(Panel(*Match, FIntPoint(9, 6)), 1), FString(TEXT("Construire un pont : commandé. En attente d’un charpentier libre.")));
 	TestEqual(TEXT("Outpost ordered"), LineText(Panel(*Match, FIntPoint(4, 7)), 1), FString(TEXT("Avant-poste commandé. Un charpentier est en route.")));
 
 	const TArray<FName> CarpenterOnly = { FName(TEXT("Carpenter")) };
@@ -491,6 +491,9 @@ bool FCytraPanelCrewListTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Second worker"), Start.Workers[1].Name.ToString(), FString(TEXT("Nain mineur")));
 	TestEqual(TEXT("At the camp"), Start.Workers[1].State.ToString(), FString(TEXT("Au camp")));
 	TestTrue(TEXT("Calm color"), Start.Workers[1].Tone == ECytraCrewTone::Calm);
+	TestEqual(TEXT("Worker id"), Start.Workers[0].Id, Match->GetWorkers()[0].Id);
+	TestEqual(TEXT("Dismiss a carpenter"), Start.Workers[0].Dismiss.ToString(), FString(TEXT("Renvoyer (+35)")));
+	TestEqual(TEXT("Dismiss a miner"), Start.Workers[1].Dismiss.ToString(), FString(TEXT("Renvoyer (+28)")));
 
 	// The miner walks to the mine to open it, then works there: busy.
 	const FIntPoint Mine(14, 11);

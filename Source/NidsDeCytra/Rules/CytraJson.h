@@ -30,6 +30,8 @@ namespace CytraJson
 		bool String(const TCHAR* Field, FString& Out) const;
 		bool Name(const TCHAR* Field, FName& Out) const;
 		bool Object(const TCHAR* Field, TSharedPtr<FJsonObject>& Out) const;
+		/** Leaves Out null when the field is absent. */
+		bool OptionalObject(const TCHAR* Field, TSharedPtr<FJsonObject>& Out) const;
 		bool Array(const TCHAR* Field, const TArray<TSharedPtr<FJsonValue>>*& Out) const;
 
 		/** Records an error about Field (or about this object when Field is null). Always returns false. */

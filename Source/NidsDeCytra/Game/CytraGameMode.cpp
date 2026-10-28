@@ -77,6 +77,7 @@ void ACytraGameMode::RestartPlayer(AController* NewPlayer)
 	ACytraBoard* CurrentBoard = GetOrCreateBoard();
 	if (CameraPawn && CurrentBoard)
 	{
+		CameraPawn->SetCameraLook(EnsureLooks().Camera);
 		CameraPawn->FrameBounds(CurrentBoard->GetBoardBounds());
 	}
 }
@@ -139,12 +140,32 @@ ACytraBoard* ACytraGameMode::GetOrCreateBoard()
 		UWorld* World = GetWorld();
 		TActorIterator<ACytraBoard> It(World);
 		Board = It ? *It : World->SpawnActor<ACytraBoard>();
+		if (Board)
+		{
+			Board->SetTileHeights(EnsureLooks().TileHeights);
+		}
 	}
 	if (Board && !Board->EnsureBuilt())
 	{
 		return nullptr;
 	}
 	return Board;
+}
+
+const FCytraLooks& ACytraGameMode::EnsureLooks()
+{
+	if (!bLooksLoaded)
+	{
+		bLooksLoaded = true;
+		// Without looks the match still runs, with the default shapes and camera.
+		FString Error;
+		if (!FCytraLooks::LoadFromFile(FPaths::ProjectContentDir() / LooksFile, Looks, Error))
+		{
+			Looks = FCytraLooks();
+			UE_LOG(LogCytra, Error, TEXT("Match: cannot load looks: %s"), *Error);
+		}
+	}
+	return Looks;
 }
 
 bool ACytraGameMode::CreateMatch()
@@ -161,11 +182,7 @@ bool ACytraGameMode::CreateMatch()
 
 	Match = MakeUnique<FCytraMatch>(Board->GetMap(), Balance, Waves);
 
-	// Without looks the match still runs, with the default shape.
-	if (!FCytraLooks::LoadFromFile(FPaths::ProjectContentDir() / LooksFile, Looks, Error))
-	{
-		UE_LOG(LogCytra, Error, TEXT("Match: cannot load looks: %s"), *Error);
-	}
+	EnsureLooks();
 
 	FActorSpawnParameters Params;
 	Params.ObjectFlags |= RF_Transient;
@@ -238,6 +255,26 @@ FCytraRecruitCheck ACytraGameMode::Recruit(FName Specialty)
 		UE_LOG(LogCytra, Log, TEXT("Match: recruiting %s refused (%d)"), *Specialty.ToString(), static_cast<int32>(Result.Refusal));
 	}
 	Say(FCytraMessages::FromRecruit(Specialty, Result));
+	SyncView();
+	return Result;
+}
+
+FCytraDismissCheck ACytraGameMode::Dismiss(int32 WorkerId)
+{
+	if (!Match)
+	{
+		return FCytraDismissCheck();
+	}
+	const FCytraDismissCheck Result = Match->Dismiss(WorkerId);
+	if (Result.IsAccepted())
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: %s %d dismissed, +%d gold, crew of %d"), *Result.Role.ToString(), WorkerId, Result.Refund, Match->GetWorkers().Num());
+	}
+	else
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: dismissing worker %d refused (%d)"), WorkerId, static_cast<int32>(Result.Refusal));
+	}
+	Say(FCytraMessages::FromDismiss(Result));
 	SyncView();
 	return Result;
 }
@@ -439,6 +476,18 @@ void ACytraGameMode::SyncEnemies()
 
 void ACytraGameMode::SyncWorkers()
 {
+	// Dismissed workers leave the board.
+	for (auto It = WorkerActors.CreateIterator(); It; ++It)
+	{
+		if (!Match->FindWorker(It.Key()))
+		{
+			if (It.Value())
+			{
+				It.Value()->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
 	for (const FCytraWorker& Worker : Match->GetWorkers())
 	{
 		TObjectPtr<ACytraWorker>& Actor = WorkerActors.FindOrAdd(Worker.Id);

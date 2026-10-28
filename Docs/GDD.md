@@ -7,16 +7,16 @@ Toutes les valeurs sont provisoires et doivent rester modifiables dans les donn�
 
 Cytra, bête divine du foyer et mère de toutes les araignées, est trop gigantesque pour protéger tous ses nids. Le Conclave de Lothering (nains et gnomes) envoie ses ouvriers garder les œufs d'un nid dans une passe de montagne.
 
-- Tower defense à routes fixes, vue de dessus, un joueur.
+- Tower defense à routes fixes, vue isométrique, un joueur.
 - Le joueur ne construit rien lui-même. Il donne des ordres payants ; des ouvriers spécialisés se déplacent et les exécutent.
-- Beaucoup d'emplacements de tourelle sont inaccessibles au départ. Il faut d'abord ouvrir l'accès : déblayer, jeter un pont, poser une échelle.
+- Beaucoup d'emplacements de tourelle sont inaccessibles au départ. Il faut d'abord ouvrir l'accès : déblayer, construire un pont, poser une échelle.
 - Une partie dure 10 vagues. Le joueur perd si les 12 œufs sont détruits.
 
 ## 2. Carte « La passe »
 
 Grille de 24 colonnes × 14 lignes. `x` va de 0 (ouest) à 23 (est), `y` de 0 (nord) à 13 (sud). Les distances de ce document sont en cases.
 
-Convention proposée dans Unreal : 1 case = 200 unités ; `x` de la grille suit +Y du monde, `y` de la grille suit −X du monde, pour que la carte apparaisse comme ci-dessous dans une vue de dessus.
+Convention proposée dans Unreal : 1 case = 200 unités ; `x` de la grille suit +Y du monde, `y` de la grille suit −X du monde, pour que la carte apparaisse comme ci-dessous vue de dessus. Le jeu la montre en vue isométrique depuis le sud-ouest : les entrées à gauche, le nid à droite.
 
 ```
      012345678901234567890123
@@ -103,6 +103,8 @@ Les spécialités sont **strictes** : un ordre ne peut être exécuté que par u
 
 Les recrues arrivent toujours au camp principal.
 
+Un ouvrier peut être renvoyé à tout moment de la partie, ouvriers de départ compris, contre 70 % du coût de recrutement de sa spécialité, arrondi à l'entier inférieur (28, 35 ou 42 or ; taux `dismissRefund` dans `Balance.json`). Un ouvrier occupé peut aussi être renvoyé : son chantier garde son avancement et revient au plus proche ouvrier libre de la spécialité, ou attend une recrue. Le renvoi est refusé une fois la partie terminée. Cette règle s'ajoute au prototype.
+
 ### États d'un ouvrier
 
 | État | Sens | Disponible pour un nouveau chantier |
@@ -131,7 +133,7 @@ Règles communes : l'or est débité à la commande ; un seul chantier par case 
 | Ordre | Cible | Spécialité | Coût | Durée sur place |
 | --- | --- | --- | --- | --- |
 | Déblayer l'éboulis | Éboulis | Mineur | 30 or | 6 s |
-| Jeter un pont | Gouffre | Charpentier | 60 or | 9 s |
+| Construire un pont | Gouffre | Charpentier | 60 or | 9 s |
 | Poser une échelle | Falaise | Charpentier | 45 or | 6 s |
 | Ouvrir la mine | Mine fermée | Mineur | 50 or | 8 s |
 | Monter l'avant-poste | Site d'avant-poste | Charpentier | 70 or | 10 s |
@@ -292,7 +294,7 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 
 ## 11. Commandes et interface
 
-Vue de dessus, toute la carte visible. Tout se joue à la souris.
+Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis le sud-ouest), toute la carte visible. La molette zoome vers le curseur ; une fois zoomé, ZQSD (clavier français) ou WASD (clavier anglais) déplacent la vue, sans sortir de la carte. Tout le reste se joue à la souris.
 
 - **Clic sur une case** : la sélectionne. Un panneau affiche ce qu'elle est et les ordres possibles, avec pour chacun le coût, la spécialité requise, la durée du chantier et, s'il est refusé, la raison.
 - **Emplacement sélectionné** : la portée de la tourelle (ou de la tourelle envisagée) est dessinée sur la carte.

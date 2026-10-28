@@ -432,6 +432,46 @@ FCytraRecruitCheck FCytraMatch::Recruit(FName Role)
 	return Result;
 }
 
+FCytraDismissCheck FCytraMatch::CheckDismiss(int32 WorkerId) const
+{
+	FCytraDismissCheck Result;
+	const FCytraWorker* Worker = FindWorker(WorkerId);
+	if (IsOver())
+	{
+		Result.Refusal = ECytraDismissRefusal::GameOver;
+	}
+	else if (!Worker)
+	{
+		Result.Refusal = ECytraDismissRefusal::UnknownWorker;
+	}
+	if (Worker)
+	{
+		Result.Role = Worker->Role;
+		Result.Job = Worker->Job;
+		const FCytraRoleDef* Def = Balance.Roles.Find(Worker->Role);
+		// The margin keeps a product such as 50 x 0.7 from rounding down to 34.
+		Result.Refund = Def ? FMath::FloorToInt32(Def->RecruitCost * Balance.DismissRefund + 1e-6) : 0;
+	}
+	return Result;
+}
+
+FCytraDismissCheck FCytraMatch::Dismiss(int32 WorkerId)
+{
+	const FCytraDismissCheck Result = CheckDismiss(WorkerId);
+	if (!Result.IsAccepted())
+	{
+		return Result;
+	}
+	if (FCytraJob* Job = FindJob(Result.Job))
+	{
+		Job->Worker = 0;
+	}
+	Workers.RemoveAll([WorkerId](const FCytraWorker& Worker) { return Worker.Id == WorkerId; });
+	Wallet.EarnRefund(Result.Refund);
+	Manage();
+	return Result;
+}
+
 const FCytraJob* FCytraMatch::FindJobAt(const FIntPoint& Cell) const
 {
 	return Jobs.FindByPredicate([&Cell](const FCytraJob& Job) { return Job.Cell == Cell; });

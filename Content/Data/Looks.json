@@ -14,5 +14,20 @@
     "Ballista": { "base": { "shape": "Cylinder", "color": "6b4a2b", "size": 0.55 }, "top": { "shape": "Cube", "color": "e0cfa6", "size": 0.58 }, "aims": true },
     "Mortar": { "base": { "shape": "Cylinder", "color": "3a404a", "size": 0.62 }, "top": { "shape": "Cylinder", "color": "07090c", "size": 0.32 } },
     "Coil": { "base": { "shape": "Cylinder", "color": "7c4f25", "size": 0.6 }, "top": { "shape": "Sphere", "color": "8fe9f2", "size": 0.22 } }
+  },
+  "camera": { "pitch": -35.264, "yaw": 45, "margin": 1.05, "maxZoom": 3, "zoomStep": 1.2, "panSpeed": 900 },
+  "tileHeights": {
+    "Rock": 70,
+    "Road": 10,
+    "Ledge": 16,
+    "Slot": 24,
+    "HighSlot": 48,
+    "Rubble": 36,
+    "Gap": 2,
+    "Cliff": 56,
+    "Camp": 24,
+    "OutpostSite": 20,
+    "Mine": 36,
+    "Nest": 30
   }
 }
