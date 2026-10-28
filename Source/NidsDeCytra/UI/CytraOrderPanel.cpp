@@ -22,6 +22,8 @@ namespace
 {
 	/** Space between the blocks of the panel, as in the prototype. */
 	constexpr float BlockGap = 10.0f;
+	/** Space between the order card and the crew card. */
+	constexpr float CardGap = 12.0f;
 	/** Opacity of a refused order. */
 	constexpr float RefusedOpacity = 0.62f;
 }
@@ -67,14 +69,42 @@ void UCytraOrderPanel::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	UBorder* Background = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("Background"));
+	// Two cards in a column, as in the prototype: the orders for the selected cell, and the crew below.
+	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("Column"));
+	Column->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	WidgetTree->RootWidget = Column;
+	Content = AddCard(Column, TEXT("Orders"));
+	CrewContent = AddCard(Column, TEXT("Crew"));
+}
+
+UVerticalBox* UCytraOrderPanel::AddCard(UVerticalBox* Column, const TCHAR* Name)
+{
+	UBorder* Background = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName(FString(Name) + TEXT("Background")));
 	Background->SetBrushColor(FCytraPalette::Get().Rock900);
 	Background->SetPadding(FMargin(14.0f));
 	Background->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UCytraOrderPanel, HandleBackgroundMouseDown));
-	WidgetTree->RootWidget = Background;
+	UVerticalBoxSlot* CardSlot = Column->AddChildToVerticalBox(Background);
+	CardSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, CardGap));
 
-	Content = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("Content"));
-	Background->SetContent(Content);
+	UVerticalBox* Box = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), FName(Name));
+	Background->SetContent(Box);
+	return Box;
+}
+
+void UCytraOrderPanel::ShowCard(UVerticalBox* Box, const FCytraPanelView& View)
+{
+	Box->ClearChildren();
+	AddTitle(Box, View);
+	int32 StepNumber = 0;
+	for (const FCytraPanelLine& Line : View.Lines)
+	{
+		StepNumber = Line.Style == ECytraPanelLineStyle::Step ? StepNumber + 1 : 0;
+		AddLine(Box, Line, StepNumber);
+	}
+	for (const FCytraPanelAction& Action : View.Actions)
+	{
+		AddAction(Box, Action);
+	}
 }
 
 void UCytraOrderPanel::NativeConstruct()
@@ -126,42 +156,37 @@ void UCytraOrderPanel::Refresh()
 	const ACytraGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACytraGameMode>() : nullptr;
 	const FCytraMatch* Match = GameMode ? GameMode->GetMatch() : nullptr;
 	ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>();
-	if (!Match || !Controller || !Content)
+	if (!Match || !Controller || !Content || !CrewContent)
 	{
 		return;
 	}
 
 	const FCytraPanelView View = FCytraPanelView::Build(*Match, Controller->GetSelectedCell());
 	FString Signature = View.Signature();
-	if (Signature == ShownSignature)
+	if (Signature != ShownSignature)
 	{
-		return;
+		ShownSignature = MoveTemp(Signature);
+		// The buttons are rebuilt: the one under the cursor may never report that it was left.
+		Controller->PreviewTower(NAME_None);
+		ShowCard(Content, View);
 	}
-	ShownSignature = MoveTemp(Signature);
 
-	// The buttons are rebuilt: the one under the cursor may never report that it was left.
-	Controller->PreviewTower(NAME_None);
-	Content->ClearChildren();
-	AddTitle(View);
-	int32 StepNumber = 0;
-	for (const FCytraPanelLine& Line : View.Lines)
+	const FCytraPanelView Crew = FCytraPanelView::BuildCrew(*Match);
+	FString CrewSignature = Crew.Signature();
+	if (CrewSignature != ShownCrewSignature)
 	{
-		StepNumber = Line.Style == ECytraPanelLineStyle::Step ? StepNumber + 1 : 0;
-		AddLine(Line, StepNumber);
-	}
-	for (const FCytraPanelAction& Action : View.Actions)
-	{
-		AddAction(Action);
+		ShownCrewSignature = MoveTemp(CrewSignature);
+		ShowCard(CrewContent, Crew);
 	}
 }
 
-void UCytraOrderPanel::AddTitle(const FCytraPanelView& View)
+void UCytraOrderPanel::AddTitle(UVerticalBox* Box, const FCytraPanelView& View)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	UTextBlock* Title = MakeText(21, Palette.Snow, false, View.Title);
 	if (View.TitleNote.IsEmpty())
 	{
-		Content->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+		Box->AddChildToVerticalBox(Title)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
 	}
 	else
 	{
@@ -171,12 +196,12 @@ void UCytraOrderPanel::AddTitle(const FCytraPanelView& View)
 		UHorizontalBoxSlot* NoteSlot = Row->AddChildToHorizontalBox(MakeText(14, Palette.Mist, false, View.TitleNote));
 		NoteSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 3.0f));
 		NoteSlot->SetVerticalAlignment(VAlign_Bottom);
-		Content->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+		Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
 	}
 	if (!View.Tag.IsEmpty())
 	{
 		UTextBlock* Tag = MakeText(12, Palette.Snow, false, View.Tag.ToUpper());
-		Content->AddChildToVerticalBox(Tag)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+		Box->AddChildToVerticalBox(Tag)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
 	}
 	for (int32 Index = 0; Index < View.Stats.Num(); ++Index)
 	{
@@ -186,11 +211,11 @@ void UCytraOrderPanel::AddTitle(const FCytraPanelView& View)
 		Value->SetAutoWrapText(false);
 		Row->AddChildToHorizontalBox(Value);
 		const float Gap = Index == View.Stats.Num() - 1 ? BlockGap : 4.0f;
-		Content->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, Gap));
+		Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, Gap));
 	}
 }
 
-void UCytraOrderPanel::AddLine(const FCytraPanelLine& Line, int32 StepNumber)
+void UCytraOrderPanel::AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	if (Line.Style != ECytraPanelLineStyle::Step)
@@ -198,7 +223,7 @@ void UCytraOrderPanel::AddLine(const FCytraPanelLine& Line, int32 StepNumber)
 		const FLinearColor& Color = Line.Style == ECytraPanelLineStyle::State ? Palette.Snow
 			: Line.Style == ECytraPanelLineStyle::Warning ? Palette.Warning
 			: Palette.Mist;
-		Content->AddChildToVerticalBox(MakeText(15, Color, false, Line.Text))->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
+		Box->AddChildToVerticalBox(MakeText(15, Color, false, Line.Text))->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BlockGap));
 		return;
 	}
 
@@ -227,18 +252,26 @@ void UCytraOrderPanel::AddLine(const FCytraPanelLine& Line, int32 StepNumber)
 	{
 		Row->AddChildToHorizontalBox(MakeText(15, Palette.Snow, false, Line.Text))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	}
-	Content->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 6.0f));
+	Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 6.0f));
 }
 
-void UCytraOrderPanel::AddAction(const FCytraPanelAction& Action)
+void UCytraOrderPanel::AddAction(UVerticalBox* Box, const FCytraPanelAction& Action)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	const FCytraOrderAction Order = Action.Action;
-	UCytraPanelButton* Button = MakeButton(Palette.Rock800, [this, Order]()
+	const FName Recruit = Action.Recruit;
+	UCytraPanelButton* Button = MakeButton(Palette.Rock800, [this, Order, Recruit]()
 	{
 		if (ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>())
 		{
-			Controller->OrderOnSelection(Order);
+			if (Recruit.IsNone())
+			{
+				Controller->OrderOnSelection(Order);
+			}
+			else
+			{
+				Controller->Recruit(Recruit);
+			}
 		}
 		QueueRefresh();
 	});
@@ -258,7 +291,7 @@ void UCytraOrderPanel::AddAction(const FCytraPanelAction& Action)
 		Body->AddChildToVerticalBox(MakeText(14, Palette.Warning, false, Action.Refusal));
 		Button->SetRenderOpacity(RefusedOpacity);
 	}
-	if (Order.Kind == ECytraOrderKind::Build)
+	if (Recruit.IsNone() && Order.Kind == ECytraOrderKind::Build)
 	{
 		const FName Tower = Order.Id;
 		Button->SetHoverCallback([this, Tower](bool bHovered)
@@ -271,7 +304,7 @@ void UCytraOrderPanel::AddAction(const FCytraPanelAction& Action)
 	}
 
 	Cast<UButtonSlot>(Button->SetContent(Body))->SetPadding(FMargin(12.0f, 9.0f));
-	UVerticalBoxSlot* ButtonSlot = Content->AddChildToVerticalBox(Button);
+	UVerticalBoxSlot* ButtonSlot = Box->AddChildToVerticalBox(Button);
 	ButtonSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 	ButtonSlot->SetHorizontalAlignment(HAlign_Fill);
 }

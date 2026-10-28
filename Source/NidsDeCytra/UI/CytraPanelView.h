@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Rules/CytraCrew.h"
 #include "Rules/CytraOrders.h"
 
 class FCytraMatch;
@@ -35,10 +36,12 @@ struct FCytraPanelStat
 	FText Value;
 };
 
-/** An order the player can give on the selected cell. */
+/** An order the player can give on the selected cell, or a recruitment. */
 struct FCytraPanelAction
 {
 	FCytraOrderAction Action;
+	/** Specialty to recruit: when set, the button recruits instead of giving Action. */
+	FName Recruit;
 	FText Name;
 	FText Cost;
 	/** Specialty and job duration. */
@@ -66,6 +69,12 @@ struct NIDSDECYTRA_API FCytraPanelView
 
 	/** The panel for Cell, or the help text when nothing is selected. */
 	static FCytraPanelView Build(const FCytraMatch& Match, const TOptional<FIntPoint>& Cell);
+
+	/** The crew card: its size and a recruitment button for each specialty, after crewHTML() in the prototype. The worker list comes in J60. */
+	static FCytraPanelView BuildCrew(const FCytraMatch& Match);
+
+	/** Player-facing reason of a refused recruitment. */
+	static FText RecruitRefusalText(const FCytraRecruitCheck& Check);
 
 	/** Player-facing reason of a refused order. */
 	static FText RefusalText(const FCytraOrderCheck& Check);

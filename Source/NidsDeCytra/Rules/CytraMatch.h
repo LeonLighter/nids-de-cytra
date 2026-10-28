@@ -103,6 +103,8 @@ enum class ECytraMatchEventType : uint8
 	WaveCleared,
 	/** A worker finished a job. */
 	JobDone,
+	/** A miner extracted gold. */
+	MineYield,
 };
 
 struct FCytraMatchEvent
@@ -112,7 +114,7 @@ struct FCytraMatchEvent
 	FName Enemy;
 	/** Leak: eggs destroyed. */
 	int32 Eggs = 0;
-	/** WaveCleared: the wave number (1-based) and the bonus earned. */
+	/** WaveCleared: the wave number (1-based) and the bonus earned. MineYield: the gold extracted, at the mine on Cell. */
 	int32 Wave = 0;
 	int32 Gold = 0;
 	/** JobDone: the job kind, its work id or tower type, its cell, and the tower slots it gave access to. */
@@ -156,6 +158,12 @@ public:
 	/** Pays for the order and queues its job, which takes the nearest free worker of its specialty. */
 	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
 
+	/** Whether a worker of this specialty can be recruited now, or the first reason it cannot (GDD: crew full, then gold). */
+	FCytraRecruitCheck CheckRecruit(FName Role) const;
+
+	/** Pays for a recruit, who arrives at the main camp and may take a waiting job at once. */
+	FCytraRecruitCheck Recruit(FName Role);
+
 	/** Events since the last call, oldest first. */
 	TArray<FCytraMatchEvent> ConsumeEvents();
 
@@ -175,6 +183,11 @@ public:
 	/** Enemies of the current wave not spawned yet. */
 	int32 GetPendingSpawns() const { return SpawnQueue.Num(); }
 	int32 GetKills() const { return Kills; }
+
+	/** Miners at the mine or on their way: the places taken. */
+	int32 MinersAtMine() const;
+	/** Miners extracting gold now. */
+	int32 MinersMining() const;
 	double GetTime() const { return Time; }
 
 	const FCytraGrid& GetGrid() const { return Grid; }
@@ -211,7 +224,6 @@ private:
 	/** Shortest path from the cell a worker stands on. */
 	TOptional<TArray<FIntPoint>> PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const;
 	void Finish(int32 JobIndex, FCytraWorker& Worker);
-	int32 MinersAtMine() const;
 	FCytraJob* FindJob(int32 JobId);
 
 	FCytraMapDef Map;

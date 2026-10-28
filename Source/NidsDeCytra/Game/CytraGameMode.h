@@ -53,6 +53,9 @@ public:
 	/** Player order on a cell: pays for it and queues its job, or reports why it is refused. */
 	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
 
+	/** Player order: recruit a worker of this specialty, who arrives at the main camp. */
+	FCytraRecruitCheck Recruit(FName Specialty);
+
 	/** Frames the selected cell on the board, or hides the frame. On a slot, also shows the tower range. */
 	void ShowSelection(const TOptional<FIntPoint>& Cell);
 

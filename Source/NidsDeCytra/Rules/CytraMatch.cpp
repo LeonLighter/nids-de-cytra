@@ -388,6 +388,43 @@ FCytraOrderResult FCytraMatch::Order(const FIntPoint& Cell, const FCytraOrderAct
 	return Result;
 }
 
+FCytraRecruitCheck FCytraMatch::CheckRecruit(FName Role) const
+{
+	FCytraRecruitCheck Result;
+	Result.MaxCrew = Balance.MaxCrew;
+	const FCytraRoleDef* Def = Balance.Roles.Find(Role);
+	if (!Def)
+	{
+		Result.Refusal = ECytraRecruitRefusal::UnknownRole;
+		return Result;
+	}
+	Result.Cost = Def->RecruitCost;
+	if (Workers.Num() >= Balance.MaxCrew)
+	{
+		Result.Refusal = ECytraRecruitRefusal::CrewFull;
+	}
+	else if (!Wallet.CanAfford(Result.Cost))
+	{
+		Result.Refusal = ECytraRecruitRefusal::NotEnoughGold;
+		Result.MissingGold = Wallet.Missing(Result.Cost);
+	}
+	return Result;
+}
+
+FCytraRecruitCheck FCytraMatch::Recruit(FName Role)
+{
+	FCytraRecruitCheck Result = CheckRecruit(Role);
+	if (!Result.IsAccepted())
+	{
+		return Result;
+	}
+	Wallet.TrySpend(Result.Cost);
+	AddWorker(Role);
+	Result.Worker = Workers.Last().Id;
+	Manage();
+	return Result;
+}
+
 const FCytraJob* FCytraMatch::FindJobAt(const FIntPoint& Cell) const
 {
 	return Jobs.FindByPredicate([&Cell](const FCytraJob& Job) { return Job.Cell == Cell; });
@@ -419,6 +456,11 @@ int32 FCytraMatch::MinersAtMine() const
 		Count += Worker.State == ECytraWorkerState::ToMine || Worker.State == ECytraWorkerState::Mining ? 1 : 0;
 	}
 	return Count;
+}
+
+int32 FCytraMatch::MinersMining() const
+{
+	return Workers.FilterByPredicate([](const FCytraWorker& Worker) { return Worker.State == ECytraWorkerState::Mining; }).Num();
 }
 
 TOptional<TArray<FIntPoint>> FCytraMatch::PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const
@@ -548,7 +590,22 @@ void FCytraMatch::StepWorkers(double Dt)
 				Finish(JobIndex, Worker);
 			}
 		}
-		// Mining income comes here (J50).
+		else if (Worker.State == ECytraWorkerState::Mining)
+		{
+			Worker.MineTime += Dt;
+			if (Worker.MineTime >= Balance.MinePeriod)
+			{
+				Worker.MineTime -= Balance.MinePeriod;
+				Wallet.EarnFromMine(Balance.MineYield);
+				FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
+				Event.Type = ECytraMatchEventType::MineYield;
+				Event.Gold = Balance.MineYield;
+				if (const FIntPoint* Mine = Map.Mines.FindByPredicate([this](const FIntPoint& Cell) { return Grid.IsOpened(Cell); }))
+				{
+					Event.Cell = *Mine;
+				}
+			}
+		}
 	}
 }
 

@@ -121,6 +121,14 @@ void ACytraPlayerController::OrderOnSelection(const FCytraOrderAction& Action)
 	}
 }
 
+void ACytraPlayerController::Recruit(FName Specialty)
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->Recruit(Specialty);
+	}
+}
+
 void ACytraPlayerController::PreviewTower(FName Tower)
 {
 	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())

@@ -206,7 +206,7 @@ bool FCytraPanelTilesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Mine"), Mine.Title.ToString(), FString(TEXT("Mine d’or")));
 	TestEqual(TEXT("Mine description"), LineText(Mine, 0),
 		FString(TEXT("Une galerie condamnée. Une fois rouverte, chaque mineur sans chantier y extrait 2 or toutes les 6 secondes. 2 places.")));
-	TestTrue(TEXT("Mine not opened before J50"), Mine.Actions.IsEmpty());
+	TestEqual(TEXT("Mine can be opened"), Mine.Actions.Num(), 1);
 
 	const FCytraPanelView Outpost = Panel(*Match, FIntPoint(4, 7));
 	TestEqual(TEXT("Outpost site"), Outpost.Title.ToString(), FString(TEXT("Site d’avant-poste")));
@@ -352,6 +352,122 @@ bool FCytraPanelTowerLevelsTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("Refund of a level 3 ballista"), Level3.Actions[0].Cost.ToString(), FString(TEXT("+116 or")));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraPanelMineTest, "Cytra.UI.Panel.Mine", CytraTest::Flags)
+
+bool FCytraPanelMineTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+	const FIntPoint Mine(14, 11);
+	const FString Recall = TEXT(" Un déblayage commandé rappelle un mineur.");
+
+	// Closed: the order to open it, then the job.
+	const FCytraPanelView Closed = Panel(*Match, Mine);
+	if (!TestEqual(TEXT("Open order"), Closed.Actions.Num(), 1))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Open name"), Closed.Actions[0].Name.ToString(), FString(TEXT("Ouvrir la mine")));
+	TestEqual(TEXT("Open cost"), Closed.Actions[0].Cost.ToString(), FString(TEXT("50 or")));
+	TestEqual(TEXT("Open details"), Closed.Actions[0].Meta.ToString(), FString(TEXT("mineur · 8 s de chantier")));
+	Match->Order(Mine, Closed.Actions[0].Action);
+	TestEqual(TEXT("Opening ordered"), LineText(Panel(*Match, Mine), 1), FString(TEXT("Ouverture commandée. Un mineur est en route.")));
+
+	// Open, with the miner who opened it at work: one place left.
+	StepUntilIdle(*Match);
+	const FCytraPanelView Open = Panel(*Match, Mine);
+	TestEqual(TEXT("Open title"), Open.Title.ToString(), FString(TEXT("Mine d’or")));
+	TestEqual(TEXT("Miners"), Open.TitleNote.ToString(), FString(TEXT("1/2 mineurs")));
+	TestEqual(TEXT("Income"), StatText(Open, 0), FString(TEXT("Revenu 2 or toutes les 6 s")));
+	TestEqual(TEXT("Extracted"), StatText(Open, 1), FString(TEXT("Extrait 0 or")));
+	TestEqual(TEXT("One place left"), LineText(Open, 0), FString(TEXT("Il reste une place : un second mineur doublerait le revenu.")) + Recall);
+	TestTrue(TEXT("No order on an open mine"), Open.Actions.IsEmpty());
+	for (int32 i = 0; i < 61 * 6; ++i)
+	{
+		Match->Step(Dt);
+	}
+	TestEqual(TEXT("Extracted after 6 s"), StatText(Panel(*Match, Mine), 1), FString(TEXT("Extrait 2 or")));
+
+	// A clearing recalls the miner: nobody is left, then he walks back down.
+	Match->Order(FIntPoint(13, 8), Work(TEXT("Clear")));
+	const FCytraPanelView Empty = Panel(*Match, Mine);
+	TestEqual(TEXT("No miner"), Empty.TitleNote.ToString(), FString(TEXT("0/2 mineurs")));
+	TestEqual(TEXT("No income"), StatText(Empty, 0), FString(TEXT("Revenu 0 or toutes les 6 s")));
+	TestEqual(TEXT("Nobody"), LineText(Empty, 0), FString(TEXT("Personne à la mine. Un mineur y descend dès qu’il n’a plus de chantier.")) + Recall);
+	StepUntilIdle(*Match);
+	TestEqual(TEXT("On the way back"), LineText(Panel(*Match, Mine), 0),
+		FString(TEXT("Un mineur est en chemin. Il reste une place : un second mineur doublerait le revenu.")) + Recall);
+
+	// Two miners fill it.
+	const TArray<FName> Miners = { TEXT("Miner"), TEXT("Miner") };
+	Match = MakeMatch(*this, &Miners);
+	if (!Match)
+	{
+		return false;
+	}
+	Match->Order(Mine, FCytraOrderAction::Work(TEXT("OpenMine")));
+	StepUntilIdle(*Match);
+	for (int32 i = 0; i < 60 * 20; ++i)
+	{
+		Match->Step(Dt);
+	}
+	const FCytraPanelView Full = Panel(*Match, Mine);
+	TestEqual(TEXT("Two miners"), Full.TitleNote.ToString(), FString(TEXT("2/2 mineurs")));
+	TestEqual(TEXT("Double income"), StatText(Full, 0), FString(TEXT("Revenu 4 or toutes les 6 s")));
+	TestEqual(TEXT("Full"), LineText(Full, 0), FString(TEXT("Les 2 places sont prises.")) + Recall);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraPanelCrewTest, "Cytra.UI.Panel.Crew", CytraTest::Flags)
+
+bool FCytraPanelCrewTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+
+	const FCytraPanelView Start = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Title"), Start.Title.ToString(), FString(TEXT("Équipe")));
+	TestEqual(TEXT("Size"), Start.TitleNote.ToString(), FString(TEXT("2/8")));
+	if (!TestEqual(TEXT("One button per specialty"), Start.Actions.Num(), 3))
+	{
+		return false;
+	}
+	const FCytraPanelAction& MinerButton = Start.Actions[0];
+	TestEqual(TEXT("Recruits a miner"), MinerButton.Recruit, FName(TEXT("Miner")));
+	TestEqual(TEXT("Miner name"), MinerButton.Name.ToString(), FString(TEXT("Recruter un mineur")));
+	TestEqual(TEXT("Miner cost"), MinerButton.Cost.ToString(), FString(TEXT("40 or")));
+	TestEqual(TEXT("Miner details"), MinerButton.Meta.ToString(), FString(TEXT("Spécialité : déblayage, mine d’or")));
+	TestTrue(TEXT("Miner recruitable"), MinerButton.IsEnabled());
+	TestEqual(TEXT("Engineer name"), Start.Actions[2].Name.ToString(), FString(TEXT("Recruter un ingénieur")));
+	TestEqual(TEXT("Engineer details"), Start.Actions[2].Meta.ToString(), FString(TEXT("Spécialité : ingénierie")));
+
+	// 170 gold: an engineer, a miner and a carpenter leave 20, short of 30 for another carpenter.
+	Match->Recruit(TEXT("Engineer"));
+	Match->Recruit(TEXT("Miner"));
+	Match->Recruit(TEXT("Carpenter"));
+	const FCytraPanelView Poor = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Size after recruiting"), Poor.TitleNote.ToString(), FString(TEXT("5/8")));
+	TestEqual(TEXT("Carpenter too expensive"), Poor.Actions[1].Refusal.ToString(), FString(TEXT("Il manque 30 or")));
+	TestNotEqual(TEXT("Signature changes"), Poor.Signature(), Start.Signature());
+
+	const TArray<FName> Full = { TEXT("Carpenter"), TEXT("Miner"), TEXT("Engineer"), TEXT("Carpenter"), TEXT("Miner"), TEXT("Engineer"), TEXT("Carpenter"), TEXT("Miner") };
+	Match = MakeMatch(*this, &Full);
+	if (!Match)
+	{
+		return false;
+	}
+	const FCytraPanelView Complete = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("Full size"), Complete.TitleNote.ToString(), FString(TEXT("8/8")));
+	TestEqual(TEXT("Crew full"), Complete.Actions[0].Refusal.ToString(), FString(TEXT("Équipe complète (8)")));
 	return true;
 }
 

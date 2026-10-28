@@ -63,6 +63,7 @@ bool FCytraTextDataKeysTest::RunTest(const FString& Parameters)
 	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
 	{
 		Keys.Add(FString::Printf(TEXT("Role.%s.Short"), *Role.Key.ToString()));
+		Keys.Add(FString::Printf(TEXT("Role.%s.Spec"), *Role.Key.ToString()));
 	}
 	for (const TPair<FName, FCytraWorkDef>& Work : Balance.Works)
 	{

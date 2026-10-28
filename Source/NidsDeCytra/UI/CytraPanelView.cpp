@@ -168,6 +168,25 @@ namespace
 			FText::Format(CytraText::Get(TEXT("Panel.DismantleExtra")), Percent(Balance.DismantleRefund)), &Refund);
 	}
 
+	/** An open mine: the miners there, the income, the gold extracted so far, and whether a place is free. */
+	void BuildOpenMine(FCytraPanelView& View, const FCytraMatch& Match, ECytraTileType Type)
+	{
+		const FCytraBalance& Balance = Match.GetBalance();
+		const int32 Mining = Match.MinersMining();
+		const int32 Taken = Match.MinersAtMine();
+		View.Title = TileText(Type, TEXT("Title"));
+		View.TitleNote = FText::Format(CytraText::Get(TEXT("Panel.MineMiners")), Mining, Balance.MineSlots);
+		AddStat(View, TEXT("Panel.MineIncome"), FText::Format(CytraText::Get(TEXT("Panel.MineIncomeValue")), Mining * Balance.MineYield, FText::AsNumber(Balance.MinePeriod)));
+		AddStat(View, TEXT("Panel.MineMined"), FText::Format(CytraText::Get(TEXT("Panel.Cost")), Match.GetWallet().Mined));
+
+		const FText Places = Taken >= Balance.MineSlots ? FText::Format(CytraText::Get(TEXT("Panel.MineFull")), Balance.MineSlots)
+			: Taken > 0 ? CytraText::Get(TEXT("Panel.MinePlaceLeft"))
+			: CytraText::Get(TEXT("Panel.MineEmpty"));
+		// A miner still on the way takes a place before he extracts.
+		const TCHAR* State = Taken > Mining ? TEXT("Panel.MineStateComing") : TEXT("Panel.MineState");
+		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(CytraText::Get(State), Places));
+	}
+
 	void BuildSlot(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, ECytraTileType Type)
 	{
 		const FCytraGrid& Grid = Match.GetGrid();
@@ -251,12 +270,16 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 		AddLine(View, ECytraPanelLineStyle::Text, TileText(Type, TEXT("Desc")));
 		AddWorks(View, Match, *Cell, Type);
 	}
+	else if (Type == ECytraTileType::Mine && bOpened)
+	{
+		BuildOpenMine(View, Match, Type);
+	}
 	else if (Type == ECytraTileType::Mine)
 	{
-		// Opening and working the mine come in J50.
 		const FCytraBalance& Balance = Match.GetBalance();
 		View.Title = TileText(Type, TEXT("Title"));
 		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(TileText(Type, TEXT("Desc")), Balance.MineYield, FText::AsNumber(Balance.MinePeriod), Balance.MineSlots));
+		AddWorks(View, Match, *Cell, Type);
 	}
 	else if (Type == ECytraTileType::Nest)
 	{
@@ -269,6 +292,41 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 		AddLine(View, ECytraPanelLineStyle::Text, TileText(Type, TEXT("Desc")));
 	}
 	return View;
+}
+
+FCytraPanelView FCytraPanelView::BuildCrew(const FCytraMatch& Match)
+{
+	const FCytraBalance& Balance = Match.GetBalance();
+	FCytraPanelView View;
+	View.Title = CytraText::Get(TEXT("Crew.Title"));
+	View.TitleNote = FText::Format(CytraText::Get(TEXT("Crew.Count")), Match.GetWorkers().Num(), Balance.MaxCrew);
+	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
+	{
+		const FCytraRecruitCheck Check = Match.CheckRecruit(Role.Key);
+		FCytraPanelAction& Entry = View.Actions.AddDefaulted_GetRef();
+		Entry.Recruit = Role.Key;
+		Entry.Name = FText::Format(CytraText::Get(TEXT("Crew.Recruit")), RoleShort(Role.Key));
+		Entry.Cost = FText::Format(CytraText::Get(TEXT("Panel.Cost")), Role.Value.RecruitCost);
+		Entry.Meta = FText::Format(CytraText::Get(TEXT("Crew.Spec")), CytraText::Get(FString::Printf(TEXT("Role.%s.Spec"), *Role.Key.ToString())));
+		Entry.Refusal = RecruitRefusalText(Check);
+	}
+	return View;
+}
+
+FText FCytraPanelView::RecruitRefusalText(const FCytraRecruitCheck& Check)
+{
+	switch (Check.Refusal)
+	{
+	case ECytraRecruitRefusal::None:
+		return FText::GetEmpty();
+	case ECytraRecruitRefusal::UnknownRole:
+		return CytraText::Get(TEXT("Refusal.NotAvailableHere"));
+	case ECytraRecruitRefusal::CrewFull:
+		return FText::Format(CytraText::Get(TEXT("Refusal.CrewFull")), Check.MaxCrew);
+	case ECytraRecruitRefusal::NotEnoughGold:
+		return FText::Format(CytraText::Get(TEXT("Refusal.NotEnoughGold")), Check.MissingGold);
+	}
+	return FText::GetEmpty();
 }
 
 FText FCytraPanelView::RefusalText(const FCytraOrderCheck& Check)
@@ -307,7 +365,7 @@ FString FCytraPanelView::Signature() const
 	}
 	for (const FCytraPanelAction& Action : Actions)
 	{
-		Result += FString::Printf(TEXT("|A%s:%s:%s:%s:%s"), *Action.Action.Id.ToString(), *Action.Name.ToString(), *Action.Cost.ToString(),
+		Result += FString::Printf(TEXT("|A%s%s:%s:%s:%s:%s"), *Action.Recruit.ToString(), *Action.Action.Id.ToString(), *Action.Name.ToString(), *Action.Cost.ToString(),
 			*Action.Meta.ToString(), *Action.Refusal.ToString());
 	}
 	return Result;
