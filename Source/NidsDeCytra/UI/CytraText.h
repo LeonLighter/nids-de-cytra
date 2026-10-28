@@ -23,6 +23,9 @@ namespace CytraText
 	NIDSDECYTRA_API FText Get(const TCHAR* Key);
 	NIDSDECYTRA_API FText Get(const FString& Key);
 
+	/** Text of a data id: Group.Id.Field, such as Role.Miner.Name. */
+	NIDSDECYTRA_API FText Data(const TCHAR* Group, FName Id, const TCHAR* Field);
+
 	/** Whether the table has Key: data ids without a text show up in tests rather than on screen. */
 	NIDSDECYTRA_API bool Has(const FString& Key);
 }

@@ -18,6 +18,10 @@ struct FCytraPalette
 	FLinearColor Ember = CytraShapes::FromHex(TEXT("f0a04b"));
 	FLinearColor Gold = CytraShapes::FromHex(TEXT("f2cf63"));
 	FLinearColor Silk = CytraShapes::FromHex(TEXT("bba8ea"));
+	FLinearColor Blood = CytraShapes::FromHex(TEXT("e2695b"));
+	FLinearColor Moss = CytraShapes::FromHex(TEXT("8cc48d"));
+	/** Text of a warning message. */
+	FLinearColor WarningMessage = CytraShapes::FromHex(TEXT("ffd9d3"));
 	/** Refusals and warnings. */
 	FLinearColor Warning = CytraShapes::FromHex(TEXT("ffb9ae"));
 

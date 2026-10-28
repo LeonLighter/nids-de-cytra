@@ -55,6 +55,41 @@ namespace
 			: CytraText::Get(TEXT("Panel.JobRunning"));
 	}
 
+	const TCHAR* WorkerStateKey(ECytraWorkerState State)
+	{
+		switch (State)
+		{
+		case ECytraWorkerState::Idle:
+			return TEXT("Worker.Idle");
+		case ECytraWorkerState::Move:
+			return TEXT("Worker.Move");
+		case ECytraWorkerState::Work:
+			return TEXT("Worker.Work");
+		case ECytraWorkerState::Back:
+			return TEXT("Worker.Back");
+		case ECytraWorkerState::ToMine:
+			return TEXT("Worker.ToMine");
+		case ECytraWorkerState::Mining:
+			return TEXT("Worker.Mining");
+		}
+		return TEXT("Worker.Idle");
+	}
+
+	ECytraCrewTone WorkerTone(ECytraWorkerState State)
+	{
+		switch (State)
+		{
+		case ECytraWorkerState::Move:
+		case ECytraWorkerState::Work:
+			return ECytraCrewTone::Busy;
+		case ECytraWorkerState::ToMine:
+		case ECytraWorkerState::Mining:
+			return ECytraCrewTone::Gold;
+		default:
+			return ECytraCrewTone::Calm;
+		}
+	}
+
 	void AddLine(FCytraPanelView& View, ECytraPanelLineStyle Style, const FText& Text)
 	{
 		FCytraPanelLine& Line = View.Lines.AddDefaulted_GetRef();
@@ -300,6 +335,14 @@ FCytraPanelView FCytraPanelView::BuildCrew(const FCytraMatch& Match)
 	FCytraPanelView View;
 	View.Title = CytraText::Get(TEXT("Crew.Title"));
 	View.TitleNote = FText::Format(CytraText::Get(TEXT("Crew.Count")), Match.GetWorkers().Num(), Balance.MaxCrew);
+	for (const FCytraWorker& Worker : Match.GetWorkers())
+	{
+		FCytraPanelWorker& Entry = View.Workers.AddDefaulted_GetRef();
+		Entry.Role = Worker.Role;
+		Entry.Name = CytraText::Data(TEXT("Role"), Worker.Role, TEXT("Name"));
+		Entry.State = CytraText::Get(WorkerStateKey(Worker.State));
+		Entry.Tone = WorkerTone(Worker.State);
+	}
 	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
 	{
 		const FCytraRecruitCheck Check = Match.CheckRecruit(Role.Key);
@@ -362,6 +405,10 @@ FString FCytraPanelView::Signature() const
 	{
 		Result += FString::Printf(TEXT("|L%d:%s:%s:%s"), static_cast<int32>(Line.Style), *Line.Text.ToString(),
 			Line.Link ? *Line.Link->ToString() : TEXT(""), *Line.Suffix.ToString());
+	}
+	for (const FCytraPanelWorker& Worker : Workers)
+	{
+		Result += FString::Printf(TEXT("|W%s:%s:%d"), *Worker.Role.ToString(), *Worker.State.ToString(), static_cast<int32>(Worker.Tone));
 	}
 	for (const FCytraPanelAction& Action : Actions)
 	{

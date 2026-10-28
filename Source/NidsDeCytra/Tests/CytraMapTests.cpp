@@ -87,6 +87,19 @@ bool FCytraMapLoadsPasse01Test::RunTest(const FString& Parameters)
 		TestEqual(TEXT("South id"), Map.Routes[1].Id, FName(TEXT("South")));
 		TestEqual(TEXT("South start"), Map.Routes[1].Waypoints[0], FIntPoint(-1, 11));
 	}
+
+	// Names written on the map, at the pixel positions of the prototype converted to cells.
+	if (TestEqual(TEXT("Labels"), Map.Labels.Num(), 6))
+	{
+		TestEqual(TEXT("First label"), Map.Labels[0].Id, FName(TEXT("NorthPass")));
+		TestEqual(TEXT("First label x"), Map.Labels[0].At.X, -0.35);
+		TestEqual(TEXT("First label y"), Map.Labels[0].At.Y, 3.85);
+		TestTrue(TEXT("First label aligned left"), Map.Labels[0].Align == ECytraLabelAlign::Left);
+		TestEqual(TEXT("First label size"), Map.Labels[0].Size, 15);
+		TestEqual(TEXT("Last label"), Map.Labels[5].Id, FName(TEXT("Outpost")));
+		TestTrue(TEXT("Last label aligned right"), Map.Labels[5].Align == ECytraLabelAlign::Right);
+		TestEqual(TEXT("Last label size"), Map.Labels[5].Size, 14);
+	}
 	return true;
 }
 
@@ -122,6 +135,29 @@ bool FCytraMapRejectsBadRouteTest::RunTest(const FString& Parameters)
 	ExpectRejected(*this, TEXT("Does not end on the nest"), MakeMapJson(MiniGrid, TEXT("[[-1,1],[1,1]]")), TEXT("does not end on the nest"));
 	ExpectRejected(*this, TEXT("Crosses rock"), MakeMapJson({ TEXT("#C##"), TEXT(".#.N"), TEXT("####") }, TEXT("[[-1,1],[3,1]]")), TEXT("crosses Rock at (1,1)"));
 	ExpectRejected(*this, TEXT("Bad waypoint"), MakeMapJson(MiniGrid, TEXT("[[-1],[2,1]]")), TEXT("[x, y] pairs"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraMapLabelsTest, "Cytra.Rules.Map.Labels", CytraTestFlags)
+
+bool FCytraMapLabelsTest::RunTest(const FString& Parameters)
+{
+	auto WithLabels = [](const TCHAR* Labels)
+	{
+		return MakeMapJson(MiniGrid, MiniRoute).LeftChop(1) + FString::Printf(TEXT(",\"labels\":[%s]}"), Labels);
+	};
+
+	FCytraMapDef Map;
+	FString Error;
+	if (TestTrue(TEXT("Label with defaults"), FCytraMapLoader::ParseJson(WithLabels(TEXT("{\"id\":\"Camp\",\"at\":[1,0.5]}")), Map, Error))
+		&& TestEqual(TEXT("One label"), Map.Labels.Num(), 1))
+	{
+		TestEqual(TEXT("Anchor"), Map.Labels[0].At, FVector2d(1.0, 0.5));
+		TestTrue(TEXT("Left by default"), Map.Labels[0].Align == ECytraLabelAlign::Left);
+		TestEqual(TEXT("15 pixels by default"), Map.Labels[0].Size, 15);
+	}
+	ExpectRejected(*this, TEXT("No anchor"), WithLabels(TEXT("{\"id\":\"Camp\"}")), TEXT("'at' pair"));
+	ExpectRejected(*this, TEXT("Unknown alignment"), WithLabels(TEXT("{\"id\":\"Camp\",\"at\":[1,1],\"align\":\"top\"}")), TEXT("left, center or right"));
 	return true;
 }
 

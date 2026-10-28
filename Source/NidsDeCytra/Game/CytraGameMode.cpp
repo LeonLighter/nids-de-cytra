@@ -15,6 +15,7 @@
 #include "Game/CytraPlayerController.h"
 #include "GameFramework/Controller.h"
 #include "HAL/IConsoleManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
 #include "Rules/CytraBalanceLoader.h"
 #include "Rules/CytraWaveLoader.h"
@@ -51,6 +52,12 @@ ACytraGameMode::ACytraGameMode()
 	DefaultPawnClass = ACytraCameraPawn::StaticClass();
 }
 
+void ACytraGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	Speed = FMath::Clamp(UGameplayStatics::GetIntOption(Options, SpeedOption, 1), 1, MaxSpeed);
+}
+
 void ACytraGameMode::StartPlay()
 {
 	SpawnFallbackLighting();
@@ -82,15 +89,47 @@ void ACytraGameMode::Tick(float DeltaSeconds)
 		return;
 	}
 
-	StepAccumulator += FMath::Min(static_cast<double>(DeltaSeconds), MaxFrameSeconds);
+	// As in the prototype: the frame is capped first, then multiplied by the speed.
+	const double GameSeconds = bMatchPaused ? 0.0 : FMath::Min(static_cast<double>(DeltaSeconds), MaxFrameSeconds) * Speed;
+	StepAccumulator += GameSeconds;
 	while (StepAccumulator >= StepSeconds)
 	{
 		Match->Step(StepSeconds);
 		StepAccumulator -= StepSeconds;
 	}
-	FrameSeconds = DeltaSeconds;
+	FrameSeconds = static_cast<float>(GameSeconds);
 	SyncView();
 	FrameSeconds = 0.0f;
+	SyncNextRoutes();
+}
+
+void ACytraGameMode::TogglePause()
+{
+	bMatchPaused = !bMatchPaused;
+	UE_LOG(LogCytra, Log, TEXT("Match: %s"), bMatchPaused ? TEXT("paused") : TEXT("resumed"));
+	SyncView();
+}
+
+void ACytraGameMode::CycleSpeed()
+{
+	Speed = Speed % MaxSpeed + 1;
+	UE_LOG(LogCytra, Log, TEXT("Match: speed x%d"), Speed);
+	SyncView();
+}
+
+void ACytraGameMode::RestartMatch()
+{
+	const FString Level = UWorld::RemovePIEPrefix(GetWorld()->GetOutermost()->GetName());
+	UE_LOG(LogCytra, Log, TEXT("Match: restarting %s at speed x%d"), *Level, Speed);
+	UGameplayStatics::OpenLevel(this, FName(*Level), true, FString::Printf(TEXT("%s=%d"), SpeedOption, Speed));
+}
+
+void ACytraGameMode::ShowHover(const TOptional<FIntPoint>& Cell)
+{
+	if (Markers && Board)
+	{
+		Markers->ShowHover(*Board, Cell);
+	}
 }
 
 ACytraBoard* ACytraGameMode::GetOrCreateBoard()
@@ -154,6 +193,10 @@ void ACytraGameMode::LaunchWave()
 	{
 		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold"), Result.Bonus);
 	}
+	if (const TOptional<FCytraMessage> Message = FCytraMessages::FromLaunch(Result))
+	{
+		Say(*Message);
+	}
 	SyncView();
 }
 
@@ -174,6 +217,7 @@ FCytraOrderResult ACytraGameMode::Order(const FIntPoint& Cell, const FCytraOrder
 		UE_LOG(LogCytra, Log, TEXT("Match: order %s at (%d,%d) refused (%d)"), *Action.Id.ToString(), Cell.X, Cell.Y, static_cast<int32>(Result.Check.Refusal));
 	}
 	bGridChanged = true;
+	Say(FCytraMessages::FromOrder(Result));
 	SyncView();
 	return Result;
 }
@@ -193,6 +237,7 @@ FCytraRecruitCheck ACytraGameMode::Recruit(FName Specialty)
 	{
 		UE_LOG(LogCytra, Log, TEXT("Match: recruiting %s refused (%d)"), *Specialty.ToString(), static_cast<int32>(Result.Refusal));
 	}
+	Say(FCytraMessages::FromRecruit(Specialty, Result));
 	SyncView();
 	return Result;
 }
@@ -285,10 +330,7 @@ void ACytraGameMode::SyncView()
 	SyncEnemies();
 	SyncWorkers();
 	SyncTowers();
-	if (Shots)
-	{
-		Shots->Show(*Board, Match->GetShots(), Match->ConsumeEffects(), FrameSeconds);
-	}
+	SyncEffects();
 	SyncRange();
 	if (Markers)
 	{
@@ -300,8 +342,63 @@ void ACytraGameMode::SyncView()
 	}
 	if (ACytraGameState* CytraState = GetGameState<ACytraGameState>())
 	{
-		CytraState->UpdateFromMatch(*Match);
+		CytraState->UpdateFromMatch(*Match, bMatchPaused, Speed);
 	}
+}
+
+void ACytraGameMode::SyncEffects()
+{
+	// Gold floats up for 0.7 s after a kill and 0.9 s at the mine, as in the prototype.
+	constexpr float LootSeconds = 0.7f;
+	constexpr float MineGoldSeconds = 0.9f;
+
+	for (FCytraFloatingGold& Gold : FloatingGold)
+	{
+		Gold.Age += FrameSeconds;
+	}
+	FloatingGold.RemoveAll([](const FCytraFloatingGold& Gold) { return Gold.Age >= Gold.Duration; });
+
+	TArray<FCytraEffect> Effects = Match->ConsumeEffects();
+	Effects.RemoveAll([this](const FCytraEffect& Effect)
+	{
+		if (Effect.Kind != ECytraEffectKind::Loot && Effect.Kind != ECytraEffectKind::MineGold)
+		{
+			return false;
+		}
+		FloatingGold.Add(FCytraFloatingGold{ Effect.To, Effect.Gold, 0.0f, Effect.Kind == ECytraEffectKind::Loot ? LootSeconds : MineGoldSeconds });
+		return true;
+	});
+	if (Shots)
+	{
+		Shots->Show(*Board, Match->GetShots(), MoveTemp(Effects), FrameSeconds);
+	}
+}
+
+void ACytraGameMode::SyncNextRoutes()
+{
+	if (!Match || !Markers || !Board)
+	{
+		return;
+	}
+	const bool bShow = Match->GetPhase() == ECytraMatchPhase::Prep && Match->GetWave() < Match->GetWaveCount();
+	if (bShow && NextRoutesWave != Match->GetWave())
+	{
+		NextRoutesWave = Match->GetWave();
+		NextRoutes.Reset();
+		const TArray<FCytraRoute>& Routes = Match->GetMap().Routes;
+		TArray<FName> Order;
+		for (const FCytraRoute& Route : Routes)
+		{
+			Order.Add(Route.Id);
+		}
+		for (const FCytraRouteForecast& Forecast : Match->GetWaves().Forecast(NextRoutesWave, Order))
+		{
+			NextRoutes.Add(Routes.IndexOfByPredicate([&Forecast](const FCytraRoute& Route) { return Route.Id == Forecast.Route; }));
+		}
+	}
+	// The blink follows real time, so it goes on in pause, as in the prototype.
+	const float Pulse = 0.5f + 0.5f * FMath::Sin(static_cast<float>(GetWorld()->GetRealTimeSeconds()) * 4.0f);
+	Markers->ShowNextRoutes(*Board, bShow ? NextRoutes : TArray<int32>(), Pulse);
 }
 
 void ACytraGameMode::SyncEnemies()
@@ -459,10 +556,19 @@ ACytraEnemy* ACytraGameMode::SpawnEnemy(FName Type)
 	return Actor;
 }
 
+void ACytraGameMode::Say(const FCytraMessage& Message)
+{
+	OnMessage.Broadcast(Message);
+}
+
 void ACytraGameMode::LogEvents()
 {
 	for (const FCytraMatchEvent& Event : Match->ConsumeEvents())
 	{
+		if (const TOptional<FCytraMessage> Message = FCytraMessages::FromEvent(Event))
+		{
+			Say(*Message);
+		}
 		switch (Event.Type)
 		{
 		case ECytraMatchEventType::Leak:

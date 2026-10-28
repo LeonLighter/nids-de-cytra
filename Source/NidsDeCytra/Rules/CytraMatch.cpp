@@ -183,6 +183,9 @@ void FCytraMatch::MoveEnemies(double Dt)
 			Event.Type = ECytraMatchEventType::Leak;
 			Event.Enemy = Enemy.Type;
 			Event.Eggs = Enemy.Eggs;
+			FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+			Effect.Kind = ECytraEffectKind::Leak;
+			Effect.To = FVector2d(Map.Nest.X, Map.Nest.Y);
 		}
 		else
 		{
@@ -211,6 +214,10 @@ void FCytraMatch::Hit(FCytraEnemy& Enemy, double Damage)
 		Enemy.bDead = true;
 		Wallet.Earn(Enemy.Gold);
 		++Kills;
+		FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+		Effect.Kind = ECytraEffectKind::Loot;
+		Effect.To = Enemy.Position;
+		Effect.Gold = Enemy.Gold;
 	}
 }
 
@@ -604,6 +611,10 @@ void FCytraMatch::StepWorkers(double Dt)
 				{
 					Event.Cell = *Mine;
 				}
+				FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+				Effect.Kind = ECytraEffectKind::MineGold;
+				Effect.To = FVector2d(Event.Cell.X, Event.Cell.Y);
+				Effect.Gold = Event.Gold;
 			}
 		}
 	}

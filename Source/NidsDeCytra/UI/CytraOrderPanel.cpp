@@ -5,6 +5,7 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/SizeBox.h"
 #include "Components/ButtonSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
@@ -74,7 +75,11 @@ void UCytraOrderPanel::NativeOnInitialized()
 	Column->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	WidgetTree->RootWidget = Column;
 	Content = AddCard(Column, TEXT("Orders"));
-	CrewContent = AddCard(Column, TEXT("Crew"));
+	UVerticalBox* Crew = AddCard(Column, TEXT("Crew"));
+	CrewList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CrewList"));
+	Crew->AddChildToVerticalBox(CrewList);
+	CrewButtons = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CrewButtons"));
+	Crew->AddChildToVerticalBox(CrewButtons);
 }
 
 UVerticalBox* UCytraOrderPanel::AddCard(UVerticalBox* Column, const TCHAR* Name)
@@ -101,10 +106,52 @@ void UCytraOrderPanel::ShowCard(UVerticalBox* Box, const FCytraPanelView& View)
 		StepNumber = Line.Style == ECytraPanelLineStyle::Step ? StepNumber + 1 : 0;
 		AddLine(Box, Line, StepNumber);
 	}
+	for (int32 Index = 0; Index < View.Workers.Num(); ++Index)
+	{
+		AddWorker(Box, View.Workers[Index], Index == View.Workers.Num() - 1);
+	}
 	for (const FCytraPanelAction& Action : View.Actions)
 	{
 		AddAction(Box, Action);
 	}
+}
+
+void UCytraOrderPanel::AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Worker, bool bLast)
+{
+	// A 12-pixel dot, the name, and the state on the right, 5 pixels apart, as in the prototype.
+	const FCytraPalette& Palette = FCytraPalette::Get();
+	const ACytraGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACytraGameMode>() : nullptr;
+	const FLinearColor DotColor = GameMode ? GameMode->GetLooks().WorkerLook(Worker.Role).Color : Palette.Mist;
+
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	USizeBox* DotBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	DotBox->SetWidthOverride(12.0f);
+	DotBox->SetHeightOverride(12.0f);
+	UBorder* Dot = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+	FSlateBrush DotBrush;
+	DotBrush.DrawAs = ESlateBrushDrawType::RoundedBox;
+	DotBrush.OutlineSettings = FSlateBrushOutlineSettings(FVector4(6.0f, 6.0f, 6.0f, 6.0f));
+	DotBrush.TintColor = FSlateColor(DotColor);
+	Dot->SetBrush(DotBrush);
+	DotBox->SetContent(Dot);
+	UHorizontalBoxSlot* DotSlot = Row->AddChildToHorizontalBox(DotBox);
+	DotSlot->SetVerticalAlignment(VAlign_Center);
+	DotSlot->SetPadding(FMargin(1.0f, 0.0f, 9.0f, 0.0f));
+
+	UTextBlock* Name = MakeText(15, Palette.Snow, false, Worker.Name);
+	Name->SetAutoWrapText(false);
+	Row->AddChildToHorizontalBox(Name)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+
+	const FLinearColor& StateColor = Worker.Tone == ECytraCrewTone::Busy ? Palette.Ember
+		: Worker.Tone == ECytraCrewTone::Gold ? Palette.Gold
+		: Palette.Mist;
+	UTextBlock* State = MakeText(14, StateColor, false, Worker.State);
+	State->SetAutoWrapText(false);
+	UHorizontalBoxSlot* StateSlot = Row->AddChildToHorizontalBox(State);
+	StateSlot->SetVerticalAlignment(VAlign_Center);
+	StateSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+
+	Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bLast ? BlockGap + 2.0f : 5.0f));
 }
 
 void UCytraOrderPanel::NativeConstruct()
@@ -156,7 +203,7 @@ void UCytraOrderPanel::Refresh()
 	const ACytraGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACytraGameMode>() : nullptr;
 	const FCytraMatch* Match = GameMode ? GameMode->GetMatch() : nullptr;
 	ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>();
-	if (!Match || !Controller || !Content || !CrewContent)
+	if (!Match || !Controller || !Content || !CrewList || !CrewButtons)
 	{
 		return;
 	}
@@ -171,12 +218,25 @@ void UCytraOrderPanel::Refresh()
 		ShowCard(Content, View);
 	}
 
-	const FCytraPanelView Crew = FCytraPanelView::BuildCrew(*Match);
-	FString CrewSignature = Crew.Signature();
-	if (CrewSignature != ShownCrewSignature)
+	FCytraPanelView CrewView = FCytraPanelView::BuildCrew(*Match);
+	FCytraPanelView ButtonsView;
+	ButtonsView.Actions = MoveTemp(CrewView.Actions);
+	CrewView.Actions.Reset();
+	FString ListSignature = CrewView.Signature();
+	if (ListSignature != ShownCrewListSignature)
 	{
-		ShownCrewSignature = MoveTemp(CrewSignature);
-		ShowCard(CrewContent, Crew);
+		ShownCrewListSignature = MoveTemp(ListSignature);
+		ShowCard(CrewList, CrewView);
+	}
+	FString ButtonsSignature = ButtonsView.Signature();
+	if (ButtonsSignature != ShownCrewButtonsSignature)
+	{
+		ShownCrewButtonsSignature = MoveTemp(ButtonsSignature);
+		CrewButtons->ClearChildren();
+		for (const FCytraPanelAction& Action : ButtonsView.Actions)
+		{
+			AddAction(CrewButtons, Action);
+		}
 	}
 }
 

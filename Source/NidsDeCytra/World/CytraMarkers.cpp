@@ -15,6 +15,10 @@ namespace
 	// Selection frame of the web prototype, converted from its 40-pixel cells: a 2.5-pixel line, 1.5 pixels inside the cell.
 	constexpr float FrameInset = 1.5f / 40.0f;
 	constexpr float FrameWidth = 2.5f / 40.0f;
+	// Hover frame: a 1.5-pixel line whose middle is 1 pixel inside the cell, half-transparent white over the tile.
+	constexpr float HoverInset = 0.25f / 40.0f;
+	constexpr float HoverWidth = 1.5f / 40.0f;
+	const TCHAR* const HoverColor = TEXT("b9bfc8");
 	/** World units above the tile top. */
 	constexpr float FrameLift = 3.0f;
 	constexpr float FrameThickness = 4.0f;
@@ -98,6 +102,23 @@ void ACytraMarkers::ShowJobs(const ACytraBoard& Board, const TArray<FCytraJob>& 
 	}
 }
 
+void ACytraMarkers::AddFrame(UInstancedStaticMeshComponent& Boxes, const ACytraBoard& Board, const FIntPoint& Cell, float Inset, float FrameLine)
+{
+	const float CellSize = ACytraBoard::CellSize;
+	const FVector Center = Board.CellToWorld(Cell) + FVector(0.0f, 0.0f, Board.GetTileHeight(Board.GetMap().Get(Cell)) + FrameLift);
+	// Distance from the cell centre to the middle of each side of the frame.
+	const float Offset = CellSize * (0.5f - Inset - FrameLine * 0.5f);
+	const float Length = CellSize * (1.0f - 2.0f * Inset) / CytraShapes::Size;
+	const float Width = CellSize * FrameLine / CytraShapes::Size;
+	const float Thickness = FrameThickness / CytraShapes::Size;
+
+	// Board world axes: grid x along +Y, grid y along -X.
+	Boxes.AddInstance(FTransform(FQuat::Identity, Center + FVector(Offset, 0.0f, 0.0f), FVector(Width, Length, Thickness)), true);
+	Boxes.AddInstance(FTransform(FQuat::Identity, Center - FVector(Offset, 0.0f, 0.0f), FVector(Width, Length, Thickness)), true);
+	Boxes.AddInstance(FTransform(FQuat::Identity, Center + FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
+	Boxes.AddInstance(FTransform(FQuat::Identity, Center - FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
+}
+
 void ACytraMarkers::ShowSelection(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell)
 {
 	if (!SelectionFrame)
@@ -105,24 +126,76 @@ void ACytraMarkers::ShowSelection(const ACytraBoard& Board, const TOptional<FInt
 		SelectionFrame = MakeBoxes(TEXT("SelectionFrame"), TEXT("f0a04b"));
 	}
 	SelectionFrame->ClearInstances();
-	if (!Cell)
+	if (Cell)
+	{
+		AddFrame(*SelectionFrame, Board, *Cell, FrameInset, FrameWidth);
+	}
+}
+
+void ACytraMarkers::ShowHover(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell)
+{
+	if (!HoverFrame)
+	{
+		HoverFrame = MakeBoxes(TEXT("HoverFrame"), HoverColor);
+	}
+	HoverFrame->ClearInstances();
+	if (Cell)
+	{
+		AddFrame(*HoverFrame, Board, *Cell, HoverInset, HoverWidth);
+	}
+}
+
+void ACytraMarkers::ShowNextRoutes(const ACytraBoard& Board, const TArray<int32>& Routes, float Pulse)
+{
+	// Arrows of the web prototype, in its 40-pixel cells: two chevrons 9 pixels long and 18 high, 12 pixels apart,
+	// the first one 10 to 16 pixels from the west edge of the map, so 0.75 to 0.9 cell past the first waypoint.
+	constexpr float FirstArrow = 0.75f;
+	constexpr float PulseShift = 6.0f / 40.0f;
+	constexpr float ArrowSpacing = 12.0f / 40.0f;
+	constexpr float ArrowLength = 9.0f / 40.0f;
+	constexpr float ArrowHalfHeight = 9.0f / 40.0f;
+	constexpr float ArrowLine = 3.5f / 40.0f;
+	const TCHAR* const RoadColor = TEXT("6d6351");
+	const TCHAR* const ArrowColor = TEXT("e2695b");
+
+	if (!RouteArrows)
+	{
+		RouteArrows = MakeBoxes(TEXT("RouteArrows"), ArrowColor);
+		RouteArrowMaterial = Cast<UMaterialInstanceDynamic>(RouteArrows->GetMaterial(0));
+	}
+	RouteArrows->ClearInstances();
+	if (Routes.IsEmpty())
 	{
 		return;
 	}
+	// The prototype fades the arrows from half to full opacity over the road: the material is opaque, so blend the colors.
+	if (RouteArrowMaterial)
+	{
+		const FLinearColor Color = FMath::Lerp(CytraShapes::FromHex(RoadColor), CytraShapes::FromHex(ArrowColor), 0.5f + 0.5f * Pulse);
+		RouteArrowMaterial->SetVectorParameterValue(TEXT("Color"), Color);
+	}
 
 	const float CellSize = ACytraBoard::CellSize;
-	const FVector Center = Board.CellToWorld(*Cell) + FVector(0.0f, 0.0f, Board.GetTileHeight(Board.GetMap().Get(*Cell)) + FrameLift);
-	// Distance from the cell centre to the middle of each side of the frame.
-	const float Offset = CellSize * (0.5f - FrameInset - FrameWidth * 0.5f);
-	const float Length = CellSize * (1.0f - 2.0f * FrameInset) / CytraShapes::Size;
-	const float Width = CellSize * FrameWidth / CytraShapes::Size;
-	const float Thickness = FrameThickness / CytraShapes::Size;
-
-	// Board world axes: grid x along +Y, grid y along -X.
-	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center + FVector(Offset, 0.0f, 0.0f), FVector(Width, Length, Thickness)), true);
-	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center - FVector(Offset, 0.0f, 0.0f), FVector(Width, Length, Thickness)), true);
-	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center + FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
-	SelectionFrame->AddInstance(FTransform(FQuat::Identity, Center - FVector(0.0f, Offset, 0.0f), FVector(Length, Width, Thickness)), true);
+	const float Height = Board.GetTileHeight(ECytraTileType::Road) + FrameLift;
+	const TArray<FCytraRoute>& MapRoutes = Board.GetMap().Routes;
+	for (const int32 RouteIndex : Routes)
+	{
+		if (!MapRoutes.IsValidIndex(RouteIndex) || MapRoutes[RouteIndex].Waypoints.Num() < 2)
+		{
+			continue;
+		}
+		const TArray<FIntPoint>& Waypoints = MapRoutes[RouteIndex].Waypoints;
+		const FVector2d Start(Waypoints[0].X, Waypoints[0].Y);
+		const FVector2d Forward = (FVector2d(Waypoints[1].X, Waypoints[1].Y) - Start).GetSafeNormal();
+		const FVector2d Side(-Forward.Y, Forward.X);
+		for (int32 Arrow = 0; Arrow < 2; ++Arrow)
+		{
+			const FVector2d Back = Start + Forward * (FirstArrow + Pulse * PulseShift + Arrow * ArrowSpacing);
+			const FVector Tip = Board.GridToWorld(Back + Forward * ArrowLength) + FVector(0.0f, 0.0f, Height);
+			CytraShapes::AddSegment(*RouteArrows, Board.GridToWorld(Back - Side * ArrowHalfHeight) + FVector(0.0f, 0.0f, Height), Tip, ArrowLine * CellSize, FrameThickness);
+			CytraShapes::AddSegment(*RouteArrows, Board.GridToWorld(Back + Side * ArrowHalfHeight) + FVector(0.0f, 0.0f, Height), Tip, ArrowLine * CellSize, FrameThickness);
+		}
+	}
 }
 
 void ACytraMarkers::ShowRange(const ACytraBoard& Board, const TOptional<FIntPoint>& Cell, double Radius, bool bDashed)

@@ -83,6 +83,12 @@ enum class ECytraEffectKind : uint8
 	Zap,
 	/** A shell landed. */
 	Blast,
+	/** An enemy died at To and paid Gold. */
+	Loot,
+	/** A miner extracted Gold at the mine on To. */
+	MineGold,
+	/** An enemy reached the nest on To. */
+	Leak,
 };
 
 /** Something brief to show. The rules forget it at once. */
@@ -93,6 +99,7 @@ struct FCytraEffect
 	FVector2d From = FVector2d::ZeroVector;
 	FVector2d To = FVector2d::ZeroVector;
 	double Radius = 0.0;
+	int32 Gold = 0;
 };
 
 enum class ECytraMatchEventType : uint8

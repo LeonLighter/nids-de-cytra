@@ -13,7 +13,7 @@ class UMaterialInterface;
 class UStaticMesh;
 
 /**
- * Projectiles in flight and brief effects (coil zaps, shell blasts), drawn as instanced basic shapes:
+ * Projectiles in flight and brief effects (coil zaps, shell blasts, the red ring of an enemy reaching the nest), drawn as instanced basic shapes:
  * one actor for all of them, since a wave can have dozens of bolts in the air.
  * It does not tick: the game mode updates it after each frame of simulation.
  */
@@ -25,7 +25,7 @@ class NIDSDECYTRA_API ACytraShots : public AActor
 public:
 	ACytraShots();
 
-	/** Redraws the shots in flight, starts the new effects and ages the running ones by DeltaSeconds. */
+	/** Redraws the shots in flight, starts the new effects and ages the running ones by DeltaSeconds. Gold effects are not drawn here. */
 	void Show(const ACytraBoard& Board, const TArray<FCytraShot>& Shots, TArray<FCytraEffect> NewEffects, float DeltaSeconds);
 
 private:
@@ -57,6 +57,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInstancedStaticMeshComponent> Blasts;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> Leaks;
 
 	TArray<FRunningEffect> Running;
 };

@@ -66,6 +66,8 @@ private:
 	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View);
 	void AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber);
 	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action);
+	/** A worker of the crew list: a dot of its color, its name and its state. */
+	void AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Worker, bool bLast);
 	UTextBlock* MakeText(int32 Size, const FLinearColor& Color, bool bBold, const FText& Text);
 	UCytraPanelButton* MakeButton(const FLinearColor& Background, TFunction<void()> Callback);
 
@@ -77,11 +79,16 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> Content;
 
+	/** Crew card: the title and the worker list, then the recruitment buttons, redrawn apart so that state changes leave the buttons alone. */
 	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> CrewContent;
+	TObjectPtr<UVerticalBox> CrewList;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> CrewButtons;
 
 	FString ShownSignature;
-	FString ShownCrewSignature;
+	FString ShownCrewListSignature;
+	FString ShownCrewButtonsSignature;
 	bool bRefreshQueued = false;
 	FDelegateHandle MatchChangedHandle;
 	FDelegateHandle SelectionChangedHandle;

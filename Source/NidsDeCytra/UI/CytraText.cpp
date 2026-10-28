@@ -25,6 +25,39 @@ namespace CytraText
 		TEXT("Hud.LaunchNow"),
 		TEXT("Hud.WaveInProgress"),
 		TEXT("Hud.GameOver"),
+		TEXT("Hud.Threat"),
+		TEXT("Hud.ForecastRoute"),
+		TEXT("Hud.ForecastEnemies"),
+		TEXT("Hud.Pause"),
+		TEXT("Hud.Resume"),
+		TEXT("Hud.Speed"),
+		TEXT("Hud.Restart"),
+		TEXT("Hud.RestartConfirm"),
+		TEXT("Message.Opened"),
+		TEXT("Message.TowerBuilt"),
+		TEXT("Message.TowerUpgraded"),
+		TEXT("Message.Dismantled"),
+		TEXT("Message.Leak"),
+		TEXT("Message.WaveCleared"),
+		TEXT("Message.Ordered"),
+		TEXT("Message.Upgrade"),
+		TEXT("Message.DismantleOrdered"),
+		TEXT("Message.Waiting"),
+		TEXT("Message.Recruited"),
+		TEXT("Message.EarlyLaunch"),
+		TEXT("End.WonTitle"),
+		TEXT("End.WonBody"),
+		TEXT("End.LostTitle"),
+		TEXT("End.LostBody"),
+		TEXT("End.Progress"),
+		TEXT("End.Stats"),
+		TEXT("End.Again"),
+		TEXT("Worker.Idle"),
+		TEXT("Worker.Move"),
+		TEXT("Worker.Work"),
+		TEXT("Worker.Back"),
+		TEXT("Worker.ToMine"),
+		TEXT("Worker.Mining"),
 		TEXT("Panel.Title"),
 		TEXT("Panel.Hint"),
 		TEXT("Panel.Hint1"),
@@ -100,6 +133,11 @@ namespace CytraText
 	FText Get(const FString& Key)
 	{
 		return FText::FromStringTable(TableId, Key);
+	}
+
+	FText Data(const TCHAR* Group, FName Id, const TCHAR* Field)
+	{
+		return Get(FString::Printf(TEXT("%s.%s.%s"), Group, *Id.ToString(), Field));
 	}
 
 	bool Has(const FString& Key)

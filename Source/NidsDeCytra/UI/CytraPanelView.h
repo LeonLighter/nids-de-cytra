@@ -36,6 +36,26 @@ struct FCytraPanelStat
 	FText Value;
 };
 
+/** Color of a worker state in the crew list, as in the prototype. */
+enum class ECytraCrewTone : uint8
+{
+	/** At a camp or walking back to one. */
+	Calm,
+	/** On the way to a job or working. */
+	Busy,
+	/** At the mine or on the way to it. */
+	Gold,
+};
+
+/** A line of the crew list. */
+struct FCytraPanelWorker
+{
+	FName Role;
+	FText Name;
+	FText State;
+	ECytraCrewTone Tone = ECytraCrewTone::Calm;
+};
+
 /** An order the player can give on the selected cell, or a recruitment. */
 struct FCytraPanelAction
 {
@@ -65,12 +85,14 @@ struct NIDSDECYTRA_API FCytraPanelView
 	FText Tag;
 	TArray<FCytraPanelStat> Stats;
 	TArray<FCytraPanelLine> Lines;
+	/** Crew card: every worker, in order of arrival. */
+	TArray<FCytraPanelWorker> Workers;
 	TArray<FCytraPanelAction> Actions;
 
 	/** The panel for Cell, or the help text when nothing is selected. */
 	static FCytraPanelView Build(const FCytraMatch& Match, const TOptional<FIntPoint>& Cell);
 
-	/** The crew card: its size and a recruitment button for each specialty, after crewHTML() in the prototype. The worker list comes in J60. */
+	/** The crew card: its size, every worker with its state, and a recruitment button for each specialty, after crewHTML() in the prototype. */
 	static FCytraPanelView BuildCrew(const FCytraMatch& Match);
 
 	/** Player-facing reason of a refused recruitment. */
