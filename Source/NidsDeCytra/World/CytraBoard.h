@@ -47,6 +47,9 @@ public:
 	/** Height of the top of a tile type, in world units above ground level. */
 	float GetTileHeight(ECytraTileType Type) const;
 
+	/** Replaces the height of the listed tile types, before the board is built. Ignored once it is. */
+	void SetTileHeights(const TMap<ECytraTileType, float>& Heights);
+
 	/** World-space box covering every tile. Invalid if the board is not built. */
 	FBox GetBoardBounds() const;
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Rules/CytraTileType.h"
 
 /** Placeholder appearance: an engine basic shape and a flat color. Sizes are in cells. */
 struct FCytraLook
@@ -50,6 +51,8 @@ struct NIDSDECYTRA_API FCytraLooks
 	TMap<FName, FCytraTowerLook> Towers;
 	/** Optional in the file: defaults to true isometry. */
 	FCytraCameraLook Camera;
+	/** Height of the top of each tile type, in world units. Optional: the board keeps its own height for a type left out. */
+	TMap<ECytraTileType, float> TileHeights;
 
 	/** The look of a tower type, or the default look if the file has none. */
 	const FCytraTowerLook& TowerLook(FName Tower) const;

@@ -297,6 +297,16 @@ float ACytraBoard::GetTileHeight(ECytraTileType Type) const
 	return Height ? FMath::Max(*Height, 1.0f) : 10.0f;
 }
 
+void ACytraBoard::SetTileHeights(const TMap<ECytraTileType, float>& Heights)
+{
+	if (bBuilt)
+	{
+		UE_LOG(LogCytra, Warning, TEXT("Board: tile heights set after the board was built, ignored"));
+		return;
+	}
+	TileHeights.Append(Heights);
+}
+
 FVector ACytraBoard::CellToWorld(const FIntPoint& Cell) const
 {
 	return GetActorTransform().TransformPosition(CellToLocal(Cell));

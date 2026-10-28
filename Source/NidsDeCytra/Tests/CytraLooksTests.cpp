@@ -51,6 +51,12 @@ bool FCytraLooksLoadsLooksTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Camera pitch"), Looks.Camera.Pitch, -35.264);
 	TestEqual(TEXT("Camera yaw"), Looks.Camera.Yaw, 45.0);
 	TestTrue(TEXT("Camera zooms in"), Looks.Camera.MaxZoom > 1.0);
+	const UEnum* TileEnum = StaticEnum<ECytraTileType>();
+	for (int32 Index = 0; Index < TileEnum->NumEnums() - 1; ++Index)
+	{
+		TestTrue(FString::Printf(TEXT("%s has a height"), *TileEnum->GetNameStringByIndex(Index)), Looks.TileHeights.Contains(static_cast<ECytraTileType>(TileEnum->GetValueByIndex(Index))));
+	}
+	TestEqual(TEXT("Rock height"), Looks.TileHeights.FindRef(ECytraTileType::Rock), 70.0f);
 
 	const FCytraLook& Unknown = Looks.EnemyLook(TEXT("Dragon"));
 	TestEqual(TEXT("Default shape for an unknown enemy"), Unknown.Shape, FName(TEXT("Sphere")));
@@ -86,6 +92,8 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 		{ TEXT("Camera zooming out only"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"maxZoom":0.5}})"), TEXT("camera.maxZoom") },
 		{ TEXT("Camera zoom step of 1"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"zoomStep":1}})"), TEXT("camera.zoomStep") },
 		{ TEXT("Camera not panning"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"panSpeed":0}})"), TEXT("camera.panSpeed") },
+		{ TEXT("Height of an unknown tile"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"tileHeights":{"Lava":10}})"), TEXT("tileHeights.Lava") },
+		{ TEXT("Flat tile"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"tileHeights":{"Road":0}})"), TEXT("tileHeights.Road") },
 	};
 	for (const FCase& Case : Cases)
 	{

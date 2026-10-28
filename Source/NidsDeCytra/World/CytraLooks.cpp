@@ -153,6 +153,42 @@ namespace
 		}
 		return true;
 	}
+
+	/** Reads the optional "tileHeights" section: a height by tile type name. */
+	bool ParseTileHeights(const FReader& RootReader, TMap<ECytraTileType, float>& OutHeights, FString& OutError)
+	{
+		OutHeights.Reset();
+		TSharedPtr<FJsonObject> SectionObject;
+		if (!RootReader.OptionalObject(TEXT("tileHeights"), SectionObject))
+		{
+			return false;
+		}
+		if (!SectionObject)
+		{
+			return true;
+		}
+		const FReader Reader(*SectionObject, TEXT("tileHeights"), OutError);
+		const UEnum* Enum = StaticEnum<ECytraTileType>();
+		for (const TPair<FString, TSharedPtr<FJsonValue>>& Entry : SectionObject->Values)
+		{
+			const int64 Value = Enum->GetValueByNameString(Entry.Key);
+			if (Value == INDEX_NONE)
+			{
+				return Reader.Fail(*Entry.Key, TEXT("unknown tile type"));
+			}
+			double Height = 0.0;
+			if (!Reader.Number(*Entry.Key, Height))
+			{
+				return false;
+			}
+			if (Height < 1.0)
+			{
+				return Reader.Fail(*Entry.Key, TEXT("must be at least 1"));
+			}
+			OutHeights.Add(static_cast<ECytraTileType>(Value), static_cast<float>(Height));
+		}
+		return true;
+	}
 }
 
 const FCytraTowerLook& FCytraLooks::TowerLook(FName Tower) const
@@ -183,7 +219,8 @@ bool FCytraLooks::ParseJson(const FString& Json, FCytraLooks& OutLooks, FString&
 	return ParseSection(RootReader, TEXT("enemies"), OutLooks.Enemies, OutError)
 		&& ParseSection(RootReader, TEXT("workers"), OutLooks.Workers, OutError)
 		&& ParseTowers(RootReader, OutLooks.Towers, OutError)
-		&& ParseCamera(RootReader, OutLooks.Camera, OutError);
+		&& ParseCamera(RootReader, OutLooks.Camera, OutError)
+		&& ParseTileHeights(RootReader, OutLooks.TileHeights, OutError);
 }
 
 bool FCytraLooks::LoadFromFile(const FString& Path, FCytraLooks& OutLooks, FString& OutError)

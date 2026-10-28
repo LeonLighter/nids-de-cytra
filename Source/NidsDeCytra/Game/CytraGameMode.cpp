@@ -140,6 +140,10 @@ ACytraBoard* ACytraGameMode::GetOrCreateBoard()
 		UWorld* World = GetWorld();
 		TActorIterator<ACytraBoard> It(World);
 		Board = It ? *It : World->SpawnActor<ACytraBoard>();
+		if (Board)
+		{
+			Board->SetTileHeights(EnsureLooks().TileHeights);
+		}
 	}
 	if (Board && !Board->EnsureBuilt())
 	{
