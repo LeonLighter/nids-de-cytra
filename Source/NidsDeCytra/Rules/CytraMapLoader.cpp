@@ -208,6 +208,58 @@ namespace
 	}
 }
 
+namespace
+{
+	bool ParseLabels(const FJsonObject& Root, FCytraMapDef& Map, FString& OutError)
+	{
+		const TArray<TSharedPtr<FJsonValue>>* Labels = nullptr;
+		if (!Root.TryGetArrayField(TEXT("labels"), Labels))
+		{
+			return true;
+		}
+		for (const TSharedPtr<FJsonValue>& LabelValue : *Labels)
+		{
+			const TSharedPtr<FJsonObject>* LabelObject = nullptr;
+			const TArray<TSharedPtr<FJsonValue>>* At = nullptr;
+			FString Id;
+			double X = 0.0;
+			double Y = 0.0;
+			if (!LabelValue->TryGetObject(LabelObject)
+				|| !(*LabelObject)->TryGetStringField(TEXT("id"), Id)
+				|| !(*LabelObject)->TryGetArrayField(TEXT("at"), At)
+				|| At->Num() != 2 || !(*At)[0]->TryGetNumber(X) || !(*At)[1]->TryGetNumber(Y))
+			{
+				OutError = TEXT("each label needs an 'id' and an 'at' pair [x, y]");
+				return false;
+			}
+			FCytraMapLabel& Label = Map.Labels.AddDefaulted_GetRef();
+			Label.Id = FName(*Id);
+			Label.At = FVector2d(X, Y);
+			FString Align = TEXT("left");
+			(*LabelObject)->TryGetStringField(TEXT("align"), Align);
+			if (Align == TEXT("left"))
+			{
+				Label.Align = ECytraLabelAlign::Left;
+			}
+			else if (Align == TEXT("center"))
+			{
+				Label.Align = ECytraLabelAlign::Center;
+			}
+			else if (Align == TEXT("right"))
+			{
+				Label.Align = ECytraLabelAlign::Right;
+			}
+			else
+			{
+				OutError = FString::Printf(TEXT("label %s: 'align' must be left, center or right"), *Id);
+				return false;
+			}
+			(*LabelObject)->TryGetNumberField(TEXT("size"), Label.Size);
+		}
+		return true;
+	}
+}
+
 bool FCytraMapLoader::ParseJson(const FString& Json, FCytraMapDef& OutMap, FString& OutError)
 {
 	OutMap = FCytraMapDef();
@@ -233,7 +285,8 @@ bool FCytraMapLoader::ParseJson(const FString& Json, FCytraMapDef& OutMap, FStri
 	TMap<TCHAR, ECytraTileType> Legend;
 	return ParseLegend(*Root, Legend, OutError)
 		&& ParseGrid(*Root, Legend, OutMap, OutError)
-		&& ParseRoutes(*Root, OutMap, OutError);
+		&& ParseRoutes(*Root, OutMap, OutError)
+		&& ParseLabels(*Root, OutMap, OutError);
 }
 
 bool FCytraMapLoader::LoadFromFile(const FString& Path, FCytraMapDef& OutMap, FString& OutError)
