@@ -158,6 +158,12 @@ public:
 	/** Pays for the order and queues its job, which takes the nearest free worker of its specialty. */
 	FCytraOrderResult Order(const FIntPoint& Cell, const FCytraOrderAction& Action);
 
+	/** Whether a worker of this specialty can be recruited now, or the first reason it cannot (GDD: crew full, then gold). */
+	FCytraRecruitCheck CheckRecruit(FName Role) const;
+
+	/** Pays for a recruit, who arrives at the main camp and may take a waiting job at once. */
+	FCytraRecruitCheck Recruit(FName Role);
+
 	/** Events since the last call, oldest first. */
 	TArray<FCytraMatchEvent> ConsumeEvents();
 

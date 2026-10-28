@@ -388,6 +388,42 @@ FCytraOrderResult FCytraMatch::Order(const FIntPoint& Cell, const FCytraOrderAct
 	return Result;
 }
 
+FCytraRecruitCheck FCytraMatch::CheckRecruit(FName Role) const
+{
+	FCytraRecruitCheck Result;
+	const FCytraRoleDef* Def = Balance.Roles.Find(Role);
+	if (!Def)
+	{
+		Result.Refusal = ECytraRecruitRefusal::UnknownRole;
+		return Result;
+	}
+	Result.Cost = Def->RecruitCost;
+	if (Workers.Num() >= Balance.MaxCrew)
+	{
+		Result.Refusal = ECytraRecruitRefusal::CrewFull;
+	}
+	else if (!Wallet.CanAfford(Result.Cost))
+	{
+		Result.Refusal = ECytraRecruitRefusal::NotEnoughGold;
+		Result.MissingGold = Wallet.Missing(Result.Cost);
+	}
+	return Result;
+}
+
+FCytraRecruitCheck FCytraMatch::Recruit(FName Role)
+{
+	FCytraRecruitCheck Result = CheckRecruit(Role);
+	if (!Result.IsAccepted())
+	{
+		return Result;
+	}
+	Wallet.TrySpend(Result.Cost);
+	AddWorker(Role);
+	Result.Worker = Workers.Last().Id;
+	Manage();
+	return Result;
+}
+
 const FCytraJob* FCytraMatch::FindJobAt(const FIntPoint& Cell) const
 {
 	return Jobs.FindByPredicate([&Cell](const FCytraJob& Job) { return Job.Cell == Cell; });
