@@ -7,7 +7,7 @@ Toutes les valeurs sont provisoires et doivent rester modifiables dans les donn�
 
 Cytra, bête divine du foyer et mère de toutes les araignées, est trop gigantesque pour protéger tous ses nids. Le Conclave de Lothering (nains et gnomes) envoie ses ouvriers garder les œufs d'un nid dans une passe de montagne.
 
-- Tower defense à routes fixes, vue de dessus, un joueur.
+- Tower defense à routes fixes, vue isométrique, un joueur.
 - Le joueur ne construit rien lui-même. Il donne des ordres payants ; des ouvriers spécialisés se déplacent et les exécutent.
 - Beaucoup d'emplacements de tourelle sont inaccessibles au départ. Il faut d'abord ouvrir l'accès : déblayer, jeter un pont, poser une échelle.
 - Une partie dure 10 vagues. Le joueur perd si les 12 œufs sont détruits.
@@ -16,7 +16,7 @@ Cytra, bête divine du foyer et mère de toutes les araignées, est trop gigante
 
 Grille de 24 colonnes × 14 lignes. `x` va de 0 (ouest) à 23 (est), `y` de 0 (nord) à 13 (sud). Les distances de ce document sont en cases.
 
-Convention proposée dans Unreal : 1 case = 200 unités ; `x` de la grille suit +Y du monde, `y` de la grille suit −X du monde, pour que la carte apparaisse comme ci-dessous dans une vue de dessus.
+Convention proposée dans Unreal : 1 case = 200 unités ; `x` de la grille suit +Y du monde, `y` de la grille suit −X du monde, pour que la carte apparaisse comme ci-dessous vue de dessus. Le jeu la montre en vue isométrique depuis le sud-ouest : les entrées à gauche, le nid à droite.
 
 ```
      012345678901234567890123
@@ -292,7 +292,7 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 
 ## 11. Commandes et interface
 
-Vue de dessus, toute la carte visible. Tout se joue à la souris.
+Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis le sud-ouest), toute la carte visible. La molette zoome vers le curseur ; une fois zoomé, ZQSD (clavier français) ou WASD (clavier anglais) déplacent la vue, sans sortir de la carte. Tout le reste se joue à la souris.
 
 - **Clic sur une case** : la sélectionne. Un panneau affiche ce qu'elle est et les ordres possibles, avec pour chacun le coût, la spécialité requise, la durée du chantier et, s'il est refusé, la raison.
 - **Emplacement sélectionné** : la portée de la tourelle (ou de la tourelle envisagée) est dessinée sur la carte.
