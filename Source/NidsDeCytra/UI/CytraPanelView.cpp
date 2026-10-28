@@ -338,10 +338,12 @@ FCytraPanelView FCytraPanelView::BuildCrew(const FCytraMatch& Match)
 	for (const FCytraWorker& Worker : Match.GetWorkers())
 	{
 		FCytraPanelWorker& Entry = View.Workers.AddDefaulted_GetRef();
+		Entry.Id = Worker.Id;
 		Entry.Role = Worker.Role;
 		Entry.Name = CytraText::Data(TEXT("Role"), Worker.Role, TEXT("Name"));
 		Entry.State = CytraText::Get(WorkerStateKey(Worker.State));
 		Entry.Tone = WorkerTone(Worker.State);
+		Entry.Dismiss = FText::Format(CytraText::Get(TEXT("Crew.Dismiss")), Match.CheckDismiss(Worker.Id).Refund);
 	}
 	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
 	{
@@ -408,7 +410,7 @@ FString FCytraPanelView::Signature() const
 	}
 	for (const FCytraPanelWorker& Worker : Workers)
 	{
-		Result += FString::Printf(TEXT("|W%s:%s:%d"), *Worker.Role.ToString(), *Worker.State.ToString(), static_cast<int32>(Worker.Tone));
+		Result += FString::Printf(TEXT("|W%d:%s:%s:%d:%s"), Worker.Id, *Worker.Role.ToString(), *Worker.State.ToString(), static_cast<int32>(Worker.Tone), *Worker.Dismiss.ToString());
 	}
 	for (const FCytraPanelAction& Action : Actions)
 	{

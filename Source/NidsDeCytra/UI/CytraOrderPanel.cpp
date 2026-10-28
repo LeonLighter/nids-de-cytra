@@ -18,6 +18,7 @@
 #include "Game/CytraPlayerController.h"
 #include "TimerManager.h"
 #include "UI/CytraPalette.h"
+#include "UI/CytraText.h"
 
 namespace
 {
@@ -27,6 +28,15 @@ namespace
 	constexpr float CardGap = 12.0f;
 	/** Opacity of a refused order. */
 	constexpr float RefusedOpacity = 0.62f;
+	/** Time left to confirm a dismissal. */
+	constexpr float DismissConfirmSeconds = 3.0f;
+
+	/** Color of a worker state in the crew list. */
+	const FLinearColor& ToneColor(ECytraCrewTone Tone)
+	{
+		const FCytraPalette& Palette = FCytraPalette::Get();
+		return Tone == ECytraCrewTone::Busy ? Palette.Ember : Tone == ECytraCrewTone::Gold ? Palette.Gold : Palette.Mist;
+	}
 }
 
 void UCytraPanelButton::SetCallback(TFunction<void()> InCallback)
@@ -142,16 +152,62 @@ void UCytraOrderPanel::AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Wor
 	Name->SetAutoWrapText(false);
 	Row->AddChildToHorizontalBox(Name)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 
-	const FLinearColor& StateColor = Worker.Tone == ECytraCrewTone::Busy ? Palette.Ember
-		: Worker.Tone == ECytraCrewTone::Gold ? Palette.Gold
-		: Palette.Mist;
-	UTextBlock* State = MakeText(14, StateColor, false, Worker.State);
+	UTextBlock* State = MakeText(14, ToneColor(Worker.Tone), false, Worker.State);
 	State->SetAutoWrapText(false);
 	UHorizontalBoxSlot* StateSlot = Row->AddChildToHorizontalBox(State);
 	StateSlot->SetVerticalAlignment(VAlign_Center);
 	StateSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+	WorkerStates.Add(State);
+
+	const int32 Id = Worker.Id;
+	UTextBlock* DismissLabel = MakeText(12, Palette.Mist, false, DismissArmedWorker == Id ? CytraText::Get(TEXT("Crew.DismissConfirm")) : Worker.Dismiss);
+	DismissLabel->SetAutoWrapText(false);
+	UCytraPanelButton* Dismiss = MakeButton(Palette.Rock700, [this, Id]() { HandleDismissClicked(Id); });
+	Cast<UButtonSlot>(Dismiss->SetContent(DismissLabel))->SetPadding(FMargin(6.0f, 1.0f));
+	UHorizontalBoxSlot* DismissSlot = Row->AddChildToHorizontalBox(Dismiss);
+	DismissSlot->SetVerticalAlignment(VAlign_Center);
+	DismissSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+	DismissLabels.Add(Id, DismissLabel);
+	DismissTexts.Add(Id, Worker.Dismiss);
 
 	Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, bLast ? BlockGap + 2.0f : 5.0f));
+}
+
+void UCytraOrderPanel::HandleDismissClicked(int32 WorkerId)
+{
+	if (DismissArmedWorker == WorkerId)
+	{
+		DisarmDismiss();
+		if (ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>())
+		{
+			Controller->Dismiss(WorkerId);
+		}
+		QueueRefresh();
+		return;
+	}
+	DisarmDismiss();
+	const TObjectPtr<UTextBlock>* Label = DismissLabels.Find(WorkerId);
+	UWorld* World = GetWorld();
+	if (!Label || !World)
+	{
+		return;
+	}
+	DismissArmedWorker = WorkerId;
+	(*Label)->SetText(CytraText::Get(TEXT("Crew.DismissConfirm")));
+	World->GetTimerManager().SetTimer(DismissTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { DisarmDismiss(); }), DismissConfirmSeconds, false);
+}
+
+void UCytraOrderPanel::DisarmDismiss()
+{
+	if (const TObjectPtr<UTextBlock>* Label = DismissLabels.Find(DismissArmedWorker))
+	{
+		(*Label)->SetText(DismissTexts.FindRef(DismissArmedWorker));
+	}
+	DismissArmedWorker = 0;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DismissTimer);
+	}
 }
 
 void UCytraOrderPanel::NativeConstruct()
@@ -222,11 +278,30 @@ void UCytraOrderPanel::Refresh()
 	FCytraPanelView ButtonsView;
 	ButtonsView.Actions = MoveTemp(CrewView.Actions);
 	CrewView.Actions.Reset();
-	FString ListSignature = CrewView.Signature();
+	// The list is rebuilt when the crew changes; worker states change often and are updated in place.
+	FCytraPanelView ListShape = CrewView;
+	for (FCytraPanelWorker& Worker : ListShape.Workers)
+	{
+		Worker.State = FText::GetEmpty();
+		Worker.Tone = ECytraCrewTone::Calm;
+	}
+	FString ListSignature = ListShape.Signature();
 	if (ListSignature != ShownCrewListSignature)
 	{
 		ShownCrewListSignature = MoveTemp(ListSignature);
+		if (!Match->FindWorker(DismissArmedWorker))
+		{
+			DisarmDismiss();
+		}
+		WorkerStates.Reset();
+		DismissLabels.Reset();
+		DismissTexts.Reset();
 		ShowCard(CrewList, CrewView);
+	}
+	for (int32 Index = 0; Index < CrewView.Workers.Num() && Index < WorkerStates.Num(); ++Index)
+	{
+		WorkerStates[Index]->SetText(CrewView.Workers[Index].State);
+		WorkerStates[Index]->SetColorAndOpacity(FSlateColor(ToneColor(CrewView.Workers[Index].Tone)));
 	}
 	FString ButtonsSignature = ButtonsView.Signature();
 	if (ButtonsSignature != ShownCrewButtonsSignature)

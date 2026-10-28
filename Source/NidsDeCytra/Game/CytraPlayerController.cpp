@@ -201,6 +201,14 @@ void ACytraPlayerController::Recruit(FName Specialty)
 	}
 }
 
+void ACytraPlayerController::Dismiss(int32 WorkerId)
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->Dismiss(WorkerId);
+	}
+}
+
 void ACytraPlayerController::PreviewTower(FName Tower)
 {
 	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())

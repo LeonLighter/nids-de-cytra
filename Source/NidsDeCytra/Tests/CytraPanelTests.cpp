@@ -491,6 +491,9 @@ bool FCytraPanelCrewListTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Second worker"), Start.Workers[1].Name.ToString(), FString(TEXT("Nain mineur")));
 	TestEqual(TEXT("At the camp"), Start.Workers[1].State.ToString(), FString(TEXT("Au camp")));
 	TestTrue(TEXT("Calm color"), Start.Workers[1].Tone == ECytraCrewTone::Calm);
+	TestEqual(TEXT("Worker id"), Start.Workers[0].Id, Match->GetWorkers()[0].Id);
+	TestEqual(TEXT("Dismiss a carpenter"), Start.Workers[0].Dismiss.ToString(), FString(TEXT("Renvoyer (+35)")));
+	TestEqual(TEXT("Dismiss a miner"), Start.Workers[1].Dismiss.ToString(), FString(TEXT("Renvoyer (+28)")));
 
 	// The miner walks to the mine to open it, then works there: busy.
 	const FIntPoint Mine(14, 11);

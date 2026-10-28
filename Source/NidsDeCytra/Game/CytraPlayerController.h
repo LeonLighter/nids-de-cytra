@@ -37,6 +37,9 @@ public:
 	/** Order from the interface: recruit a worker of this specialty. */
 	void Recruit(FName Specialty);
 
+	/** Order from the interface: dismiss a worker. */
+	void Dismiss(int32 WorkerId);
+
 	/** The order panel points at a tower type, or at none: an empty selected slot shows its range. */
 	void PreviewTower(FName Tower);
 

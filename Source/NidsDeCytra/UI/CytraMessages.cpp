@@ -88,6 +88,20 @@ FCytraMessage FCytraMessages::FromRecruit(FName Role, const FCytraRecruitCheck& 
 	return Good(FText::Format(CytraText::Get(TEXT("Message.Recruited")), CytraText::Data(TEXT("Role"), Role, TEXT("Name"))));
 }
 
+FCytraMessage FCytraMessages::FromDismiss(const FCytraDismissCheck& Check)
+{
+	switch (Check.Refusal)
+	{
+	case ECytraDismissRefusal::None:
+		break;
+	case ECytraDismissRefusal::GameOver:
+		return Warning(CytraText::Get(TEXT("Refusal.GameOver")));
+	case ECytraDismissRefusal::UnknownWorker:
+		return Warning(CytraText::Get(TEXT("Refusal.NotAvailableHere")));
+	}
+	return Good(FText::Format(CytraText::Get(TEXT("Message.Dismissed")), CytraText::Data(TEXT("Role"), Check.Role, TEXT("Name")), Check.Refund));
+}
+
 TOptional<FCytraMessage> FCytraMessages::FromLaunch(const FCytraLaunchResult& Result)
 {
 	if (!Result.bLaunched || Result.Bonus <= 0)

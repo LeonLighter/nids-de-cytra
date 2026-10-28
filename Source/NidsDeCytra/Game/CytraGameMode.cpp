@@ -259,6 +259,26 @@ FCytraRecruitCheck ACytraGameMode::Recruit(FName Specialty)
 	return Result;
 }
 
+FCytraDismissCheck ACytraGameMode::Dismiss(int32 WorkerId)
+{
+	if (!Match)
+	{
+		return FCytraDismissCheck();
+	}
+	const FCytraDismissCheck Result = Match->Dismiss(WorkerId);
+	if (Result.IsAccepted())
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: %s %d dismissed, +%d gold, crew of %d"), *Result.Role.ToString(), WorkerId, Result.Refund, Match->GetWorkers().Num());
+	}
+	else
+	{
+		UE_LOG(LogCytra, Log, TEXT("Match: dismissing worker %d refused (%d)"), WorkerId, static_cast<int32>(Result.Refusal));
+	}
+	Say(FCytraMessages::FromDismiss(Result));
+	SyncView();
+	return Result;
+}
+
 void ACytraGameMode::ShowSelection(const TOptional<FIntPoint>& Cell)
 {
 	SelectedCell = Cell;
@@ -456,6 +476,18 @@ void ACytraGameMode::SyncEnemies()
 
 void ACytraGameMode::SyncWorkers()
 {
+	// Dismissed workers leave the board.
+	for (auto It = WorkerActors.CreateIterator(); It; ++It)
+	{
+		if (!Match->FindWorker(It.Key()))
+		{
+			if (It.Value())
+			{
+				It.Value()->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
 	for (const FCytraWorker& Worker : Match->GetWorkers())
 	{
 		TObjectPtr<ACytraWorker>& Actor = WorkerActors.FindOrAdd(Worker.Id);
