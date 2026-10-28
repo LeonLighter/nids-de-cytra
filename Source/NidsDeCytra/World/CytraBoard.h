@@ -15,7 +15,7 @@ struct FCytraJob;
 
 /**
  * Draws the map grid with engine basic shapes, one instanced mesh per tile type.
- * Grid x runs along world +Y and grid y along world -X, so a top-down view reads like the map file.
+ * Grid x runs along world +Y and grid y along world -X: seen from above, the board reads like the map file.
  */
 UCLASS()
 class NIDSDECYTRA_API ACytraBoard : public AActor
@@ -41,7 +41,7 @@ public:
 	/** The cell under a world position, ignoring height. Unset outside the board. */
 	TOptional<FIntPoint> WorldToCell(const FVector& World) const;
 
-	/** The cell whose top a ray hits first, for mouse picking. Unset outside the board. */
+	/** The tile block a ray hits first, on its top or its side, for mouse picking. Unset outside the board. */
 	TOptional<FIntPoint> CellUnderRay(const FVector& Origin, const FVector& Direction) const;
 
 	/** Height of the top of a tile type, in world units above ground level. */
