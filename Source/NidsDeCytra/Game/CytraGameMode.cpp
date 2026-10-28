@@ -320,7 +320,19 @@ void ACytraGameMode::LogEvents()
 			UE_LOG(LogCytra, Log, TEXT("Match: wave %d cleared, +%d gold"), Event.Wave, Event.Gold);
 			break;
 		case ECytraMatchEventType::JobDone:
-			UE_LOG(LogCytra, Log, TEXT("Match: job %s done at (%d,%d), %d slots opened"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.OpenedSlots);
+			switch (Event.Job)
+			{
+			case ECytraOrderKind::Work:
+				UE_LOG(LogCytra, Log, TEXT("Match: job %s done at (%d,%d), %d slots opened"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.OpenedSlots);
+				break;
+			case ECytraOrderKind::Build:
+			case ECytraOrderKind::Upgrade:
+				UE_LOG(LogCytra, Log, TEXT("Match: %s at (%d,%d) in service at level %d"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.Level);
+				break;
+			case ECytraOrderKind::Dismantle:
+				UE_LOG(LogCytra, Log, TEXT("Match: %s at (%d,%d) dismantled, %d gold back"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.Refund);
+				break;
+			}
 			bGridChanged = true;
 			break;
 		}

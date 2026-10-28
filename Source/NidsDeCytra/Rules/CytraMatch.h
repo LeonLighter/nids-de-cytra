@@ -31,6 +31,16 @@ struct FCytraEnemy
 	bool bDead = false;
 };
 
+/** Firing state of a tower, kept in order of construction: towers fire in that order, as in the prototype. */
+struct FCytraTowerGun
+{
+	FIntPoint Cell = FIntPoint::ZeroValue;
+	/** Seconds before the next shot. Ready at 0 or below. */
+	double Cooldown = 0.0;
+	/** Direction of the last target, in radians from the +X axis of the grid. */
+	double Aim = 0.0;
+};
+
 enum class ECytraMatchEventType : uint8
 {
 	/** An enemy reached the nest. */
@@ -56,6 +66,9 @@ struct FCytraMatchEvent
 	FName Work;
 	FIntPoint Cell = FIntPoint::ZeroValue;
 	int32 OpenedSlots = 0;
+	/** JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling. */
+	int32 Level = 0;
+	int32 Refund = 0;
 };
 
 struct FCytraLaunchResult
@@ -113,6 +126,8 @@ public:
 	const TArray<FCytraJob>& GetJobs() const { return Jobs; }
 	const FCytraJob* FindJobAt(const FIntPoint& Cell) const;
 	const FCytraWorker* FindWorker(int32 WorkerId) const;
+	/** Towers in service, in order of construction. Type and level are on the grid. */
+	const TArray<FCytraTowerGun>& GetTowers() const { return Towers; }
 
 	const FCytraMapDef& GetMap() const { return Map; }
 	const FCytraBalance& GetBalance() const { return Balance; }
@@ -145,6 +160,7 @@ private:
 	FCytraGrid Grid;
 	TArray<FCytraWorker> Workers;
 	TArray<FCytraJob> Jobs;
+	TArray<FCytraTowerGun> Towers;
 
 	FCytraWallet Wallet;
 	int32 Eggs = 0;

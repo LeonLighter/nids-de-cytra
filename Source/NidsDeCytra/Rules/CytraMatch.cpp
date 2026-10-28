@@ -431,9 +431,27 @@ void FCytraMatch::Finish(int32 JobIndex, FCytraWorker& Worker)
 		Event.OpenedSlots = Grid.ReachableSlotCount() - Before;
 		break;
 	}
-	default:
-		// Towers are built, upgraded and dismantled here (J40).
+	case ECytraOrderKind::Build:
+	{
+		Grid.PlaceTower(Job.Cell, Job.Type, Job.Cost);
+		FCytraTowerGun& Gun = Towers.AddDefaulted_GetRef();
+		Gun.Cell = Job.Cell;
+		Event.Level = 1;
 		break;
+	}
+	case ECytraOrderKind::Upgrade:
+		Grid.UpgradeTower(Job.Cell, Job.Cost);
+		Event.Level = Grid.GetTower(Job.Cell)->Level;
+		break;
+	case ECytraOrderKind::Dismantle:
+	{
+		const FCytraTower Tower = Grid.RemoveTower(Job.Cell);
+		Towers.RemoveAll([&Job](const FCytraTowerGun& Gun) { return Gun.Cell == Job.Cell; });
+		Event.Level = Tower.Level;
+		Event.Refund = Balance.DismantleRefundOf(Tower.Invested);
+		Wallet.EarnRefund(Event.Refund);
+		break;
+	}
 	}
 }
 
