@@ -79,11 +79,16 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> Content;
 
+	/** Crew card: the title and the worker list, then the recruitment buttons, redrawn apart so that state changes leave the buttons alone. */
 	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> CrewContent;
+	TObjectPtr<UVerticalBox> CrewList;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> CrewButtons;
 
 	FString ShownSignature;
-	FString ShownCrewSignature;
+	FString ShownCrewListSignature;
+	FString ShownCrewButtonsSignature;
 	bool bRefreshQueued = false;
 	FDelegateHandle MatchChangedHandle;
 	FDelegateHandle SelectionChangedHandle;

@@ -75,7 +75,11 @@ void UCytraOrderPanel::NativeOnInitialized()
 	Column->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	WidgetTree->RootWidget = Column;
 	Content = AddCard(Column, TEXT("Orders"));
-	CrewContent = AddCard(Column, TEXT("Crew"));
+	UVerticalBox* Crew = AddCard(Column, TEXT("Crew"));
+	CrewList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CrewList"));
+	Crew->AddChildToVerticalBox(CrewList);
+	CrewButtons = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CrewButtons"));
+	Crew->AddChildToVerticalBox(CrewButtons);
 }
 
 UVerticalBox* UCytraOrderPanel::AddCard(UVerticalBox* Column, const TCHAR* Name)
@@ -199,7 +203,7 @@ void UCytraOrderPanel::Refresh()
 	const ACytraGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACytraGameMode>() : nullptr;
 	const FCytraMatch* Match = GameMode ? GameMode->GetMatch() : nullptr;
 	ACytraPlayerController* Controller = GetOwningPlayer<ACytraPlayerController>();
-	if (!Match || !Controller || !Content || !CrewContent)
+	if (!Match || !Controller || !Content || !CrewList || !CrewButtons)
 	{
 		return;
 	}
@@ -214,12 +218,25 @@ void UCytraOrderPanel::Refresh()
 		ShowCard(Content, View);
 	}
 
-	const FCytraPanelView Crew = FCytraPanelView::BuildCrew(*Match);
-	FString CrewSignature = Crew.Signature();
-	if (CrewSignature != ShownCrewSignature)
+	FCytraPanelView CrewView = FCytraPanelView::BuildCrew(*Match);
+	FCytraPanelView ButtonsView;
+	ButtonsView.Actions = MoveTemp(CrewView.Actions);
+	CrewView.Actions.Reset();
+	FString ListSignature = CrewView.Signature();
+	if (ListSignature != ShownCrewListSignature)
 	{
-		ShownCrewSignature = MoveTemp(CrewSignature);
-		ShowCard(CrewContent, Crew);
+		ShownCrewListSignature = MoveTemp(ListSignature);
+		ShowCard(CrewList, CrewView);
+	}
+	FString ButtonsSignature = ButtonsView.Signature();
+	if (ButtonsSignature != ShownCrewButtonsSignature)
+	{
+		ShownCrewButtonsSignature = MoveTemp(ButtonsSignature);
+		CrewButtons->ClearChildren();
+		for (const FCytraPanelAction& Action : ButtonsView.Actions)
+		{
+			AddAction(CrewButtons, Action);
+		}
 	}
 }
 
