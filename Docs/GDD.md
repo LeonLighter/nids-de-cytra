@@ -9,7 +9,7 @@ Cytra, bête divine du foyer et mère de toutes les araignées, est trop gigante
 
 - Tower defense à routes fixes, vue isométrique, un joueur.
 - Le joueur ne construit rien lui-même. Il donne des ordres payants ; des ouvriers spécialisés se déplacent et les exécutent.
-- Beaucoup d'emplacements de tourelle sont inaccessibles au départ. Il faut d'abord ouvrir l'accès : déblayer, jeter un pont, poser une échelle.
+- Beaucoup d'emplacements de tourelle sont inaccessibles au départ. Il faut d'abord ouvrir l'accès : déblayer, construire un pont, poser une échelle.
 - Une partie dure 10 vagues. Le joueur perd si les 12 œufs sont détruits.
 
 ## 2. Carte « La passe »
@@ -131,7 +131,7 @@ Règles communes : l'or est débité à la commande ; un seul chantier par case 
 | Ordre | Cible | Spécialité | Coût | Durée sur place |
 | --- | --- | --- | --- | --- |
 | Déblayer l'éboulis | Éboulis | Mineur | 30 or | 6 s |
-| Jeter un pont | Gouffre | Charpentier | 60 or | 9 s |
+| Construire un pont | Gouffre | Charpentier | 60 or | 9 s |
 | Poser une échelle | Falaise | Charpentier | 45 or | 6 s |
 | Ouvrir la mine | Mine fermée | Mineur | 50 or | 8 s |
 | Monter l'avant-poste | Site d'avant-poste | Charpentier | 70 or | 10 s |
