@@ -471,6 +471,60 @@ bool FCytraPanelCrewTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraPanelCrewListTest, "Cytra.UI.Panel.CrewList", CytraTest::Flags)
+
+bool FCytraPanelCrewListTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+
+	// The starting crew, in order of arrival, at the camp.
+	const FCytraPanelView Start = FCytraPanelView::BuildCrew(*Match);
+	if (!TestEqual(TEXT("Two workers"), Start.Workers.Num(), 2))
+	{
+		return false;
+	}
+	TestEqual(TEXT("First worker"), Start.Workers[0].Name.ToString(), FString(TEXT("Nain charpentier")));
+	TestEqual(TEXT("Second worker"), Start.Workers[1].Name.ToString(), FString(TEXT("Nain mineur")));
+	TestEqual(TEXT("At the camp"), Start.Workers[1].State.ToString(), FString(TEXT("Au camp")));
+	TestTrue(TEXT("Calm color"), Start.Workers[1].Tone == ECytraCrewTone::Calm);
+
+	// The miner walks to the mine to open it, then works there: busy.
+	const FIntPoint Mine(14, 11);
+	TestTrue(TEXT("Open mine accepted"), Match->Order(Mine, Work(TEXT("OpenMine"))).IsAccepted());
+	const FCytraPanelView Walking = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("On the way"), Walking.Workers[1].State.ToString(), FString(TEXT("En route")));
+	TestTrue(TEXT("Busy color"), Walking.Workers[1].Tone == ECytraCrewTone::Busy);
+	TestNotEqual(TEXT("Signature follows the states"), Walking.Signature(), Start.Signature());
+	for (int32 i = 0; i < 60 * 30 && Match->GetWorkers()[1].State != ECytraWorkerState::Work; ++i)
+	{
+		Match->Step(Dt);
+	}
+	TestEqual(TEXT("Working"), FCytraPanelView::BuildCrew(*Match).Workers[1].State.ToString(), FString(TEXT("Au travail")));
+
+	// Once the mine is open, the miner goes down: gold color.
+	for (int32 i = 0; i < 60 * 30 && Match->GetWorkers()[1].State != ECytraWorkerState::Mining; ++i)
+	{
+		Match->Step(Dt);
+	}
+	const FCytraPanelView Mining = FCytraPanelView::BuildCrew(*Match);
+	TestEqual(TEXT("At the mine"), Mining.Workers[1].State.ToString(), FString(TEXT("À la mine")));
+	TestTrue(TEXT("Gold color"), Mining.Workers[1].Tone == ECytraCrewTone::Gold);
+
+	// A recruit is added at the end of the list.
+	Match->Recruit(TEXT("Engineer"));
+	const FCytraPanelView Recruited = FCytraPanelView::BuildCrew(*Match);
+	if (TestEqual(TEXT("Three workers"), Recruited.Workers.Num(), 3))
+	{
+		TestEqual(TEXT("Recruit last"), Recruited.Workers[2].Name.ToString(), FString(TEXT("Gnome ingénieur")));
+		TestEqual(TEXT("Recruit at the camp"), Recruited.Workers[2].State.ToString(), FString(TEXT("Au camp")));
+	}
+	return true;
+}
+
 } // namespace CytraPanelTest
 
 #endif

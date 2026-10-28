@@ -64,11 +64,13 @@ bool FCytraTextDataKeysTest::RunTest(const FString& Parameters)
 	{
 		Keys.Add(FString::Printf(TEXT("Role.%s.Short"), *Role.Key.ToString()));
 		Keys.Add(FString::Printf(TEXT("Role.%s.Spec"), *Role.Key.ToString()));
+		Keys.Add(FString::Printf(TEXT("Role.%s.Name"), *Role.Key.ToString()));
 	}
 	for (const TPair<FName, FCytraWorkDef>& Work : Balance.Works)
 	{
 		Keys.Add(FString::Printf(TEXT("Work.%s.Label"), *Work.Key.ToString()));
 		Keys.Add(FString::Printf(TEXT("Work.%s.Ordered"), *Work.Key.ToString()));
+		Keys.Add(FString::Printf(TEXT("Work.%s.Done"), *Work.Key.ToString()));
 	}
 	for (const TPair<FName, FCytraTowerDef>& Tower : Balance.Towers)
 	{
@@ -76,6 +78,19 @@ bool FCytraTextDataKeysTest::RunTest(const FString& Parameters)
 		{
 			Keys.Add(FString::Printf(TEXT("Tower.%s.%s"), *Tower.Key.ToString(), Field));
 		}
+	}
+	for (const TPair<FName, FCytraEnemyDef>& Enemy : Balance.Enemies)
+	{
+		Keys.Add(FString::Printf(TEXT("Enemy.%s.One"), *Enemy.Key.ToString()));
+		Keys.Add(FString::Printf(TEXT("Enemy.%s.Many"), *Enemy.Key.ToString()));
+	}
+	for (const FCytraRoute& Route : Map.Routes)
+	{
+		Keys.Add(FString::Printf(TEXT("Route.%s.Name"), *Route.Id.ToString()));
+	}
+	for (const FCytraMapLabel& Label : Map.Labels)
+	{
+		Keys.Add(FString::Printf(TEXT("Label.%s"), *Label.Id.ToString()));
 	}
 	const UEnum* TileEnum = StaticEnum<ECytraTileType>();
 	for (int32 i = 0; i < TileEnum->NumEnums() - 1; ++i)

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Rules/CytraMatch.h"
+#include "UI/CytraMessages.h"
 #include "World/CytraLooks.h"
 #include "CytraGameMode.generated.h"
 
@@ -15,6 +16,19 @@ class ACytraNest;
 class ACytraShots;
 class ACytraTower;
 class ACytraWorker;
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnCytraMessage, const FCytraMessage&);
+
+/** Gold earned shown over the board for a moment, as the "+6" of the prototype. */
+struct FCytraFloatingGold
+{
+	/** Where it was earned, in grid cells. */
+	FVector2d At = FVector2d::ZeroVector;
+	int32 Gold = 0;
+	/** Game seconds since it appeared, and how long it stays. */
+	float Age = 0.0f;
+	float Duration = 0.0f;
+};
 
 /**
  * Runs the match: owns the rules simulation, advances it in fixed steps and relays player orders to it.
@@ -29,11 +43,18 @@ public:
 	/** Simulation step, as in the web prototype. */
 	static constexpr double StepSeconds = 1.0 / 60.0;
 
-	/** Longest frame simulated at once, as in the web prototype: a longer hitch slows the game down instead. */
+	/** Longest frame simulated at once, before the speed factor, as in the web prototype: a longer hitch slows the game down instead. */
 	static constexpr double MaxFrameSeconds = 0.1;
+
+	/** Fastest game speed: the speed button goes 1, 2, 3, then back to 1. */
+	static constexpr int32 MaxSpeed = 3;
+
+	/** URL option that carries the game speed over a restart. */
+	static constexpr const TCHAR* SpeedOption = TEXT("CytraSpeed");
 
 	ACytraGameMode();
 
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void StartPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	virtual void Tick(float DeltaSeconds) override;
@@ -46,6 +67,9 @@ public:
 
 	/** Null if the data files could not be loaded. */
 	const FCytraMatch* GetMatch() const { return Match.Get(); }
+
+	/** Placeholder appearance of enemies, workers and towers. */
+	const FCytraLooks& GetLooks() const { return Looks; }
 
 	/** Player order: launch the next wave now. */
 	void LaunchWave();
@@ -67,6 +91,29 @@ public:
 
 	/** Development cheat: kills every enemy on the map, paying their gold. */
 	void KillAllEnemies();
+
+	/**
+	 * Pauses or resumes the match. The engine keeps running: the simulation is just not advanced,
+	 * so orders, the interface and the board stay live, as in the prototype.
+	 */
+	void TogglePause();
+	bool IsMatchPaused() const { return bMatchPaused; }
+
+	/** Game speed 1, 2, 3, then 1 again: the simulation advances that many times faster. */
+	void CycleSpeed();
+	int32 GetSpeed() const { return Speed; }
+
+	/** Starts a new match by reloading the level, at the same speed and not paused, as the prototype does. */
+	void RestartMatch();
+
+	/** Frames the cell under the cursor, or hides the frame. */
+	void ShowHover(const TOptional<FIntPoint>& Cell);
+
+	/** Gold earned recently, for the interface to write over the board. */
+	const TArray<FCytraFloatingGold>& GetFloatingGold() const { return FloatingGold; }
+
+	/** A brief message for the player: an order accepted or refused, a job done, an egg lost, a wave cleared. */
+	FOnCytraMessage OnMessage;
 
 protected:
 	/** Balance data file, relative to the Content folder. */
@@ -90,7 +137,15 @@ private:
 
 	/** Pushes the match state to the game state and the world, and logs its events. */
 	void SyncView();
+	/** Logs the events of the match and turns them into messages. */
 	void LogEvents();
+	void Say(const FCytraMessage& Message);
+
+	/** Starts the new effects and ages the running ones: gold for the interface, the rest drawn by the shots actor. */
+	void SyncEffects();
+
+	/** During preparation, blinking arrows at the start of the routes the next wave takes. */
+	void SyncNextRoutes();
 
 	/** Spawns, moves and removes enemy actors to match the simulation. */
 	void SyncEnemies();
@@ -145,8 +200,17 @@ private:
 	double ShownRange = 0.0;
 	bool bShownRangeDashed = false;
 
-	/** Seconds of the current frame, for the effects; 0 when the view syncs outside the frame update. */
+	/** Game seconds of the current frame, for the effects: speed included, 0 in pause or when the view syncs outside the frame update. */
 	float FrameSeconds = 0.0f;
+
+	bool bMatchPaused = false;
+	int32 Speed = 1;
+
+	TArray<FCytraFloatingGold> FloatingGold;
+
+	/** Routes taken by the next wave, as indices into the map routes, and the wave they were computed for. */
+	TArray<int32> NextRoutes;
+	int32 NextRoutesWave = INDEX_NONE;
 
 	/** Game time not simulated yet, less than one step. */
 	double StepAccumulator = 0.0;

@@ -66,6 +66,8 @@ private:
 	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View);
 	void AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber);
 	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action);
+	/** A worker of the crew list: a dot of its color, its name and its state. */
+	void AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Worker, bool bLast);
 	UTextBlock* MakeText(int32 Size, const FLinearColor& Color, bool bBold, const FText& Text);
 	UCytraPanelButton* MakeButton(const FLinearColor& Background, TFunction<void()> Callback);
 
