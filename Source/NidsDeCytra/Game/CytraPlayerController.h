@@ -25,6 +25,11 @@ public:
 	/** Order from the interface: launch the next wave now. */
 	void LaunchWave();
 
+	/** Time controls of the interface: pause or resume, cycle the speed, start a new match. */
+	void TogglePause();
+	void CycleSpeed();
+	void RestartMatch();
+
 	/** Order from the interface on the selected cell. */
 	void OrderOnSelection(const FCytraOrderAction& Action);
 
@@ -44,6 +49,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
+	/** Follows the cell under the cursor, for the hover frame. */
+	virtual void PlayerTick(float DeltaTime) override;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCytraHudWidget> Hud;
@@ -60,5 +67,9 @@ private:
 	/** Selects the cell under the cursor. Clicks outside the board change nothing. */
 	void HandleClick();
 
+	/** The cell under the cursor, if any. */
+	TOptional<FIntPoint> CellUnderCursor() const;
+
 	TOptional<FIntPoint> SelectedCell;
+	TOptional<FIntPoint> HoveredCell;
 };

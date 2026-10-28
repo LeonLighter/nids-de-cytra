@@ -80,21 +80,39 @@ void ACytraPlayerController::SetupInputComponent()
 	}
 }
 
-void ACytraPlayerController::HandleClick()
+TOptional<FIntPoint> ACytraPlayerController::CellUnderCursor() const
 {
-	ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>();
+	const ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>();
 	const ACytraBoard* Board = GameMode ? GameMode->GetBoard() : nullptr;
 	FVector Origin;
 	FVector Direction;
 	if (!Board || !DeprojectMousePositionToWorld(Origin, Direction))
 	{
-		UE_LOG(LogCytra, Warning, TEXT("Input: click ignored, no board or no cursor position"));
-		return;
+		return {};
 	}
-	if (const TOptional<FIntPoint> Cell = Board->CellUnderRay(Origin, Direction))
+	return Board->CellUnderRay(Origin, Direction);
+}
+
+void ACytraPlayerController::HandleClick()
+{
+	if (const TOptional<FIntPoint> Cell = CellUnderCursor())
 	{
 		UE_LOG(LogCytra, Verbose, TEXT("Input: click on cell (%d,%d)"), Cell->X, Cell->Y);
 		SelectCell(Cell);
+	}
+}
+
+void ACytraPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	const TOptional<FIntPoint> Cell = CellUnderCursor();
+	if (Cell != HoveredCell)
+	{
+		HoveredCell = Cell;
+		if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+		{
+			GameMode->ShowHover(HoveredCell);
+		}
 	}
 }
 
@@ -142,5 +160,29 @@ void ACytraPlayerController::LaunchWave()
 	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
 	{
 		GameMode->LaunchWave();
+	}
+}
+
+void ACytraPlayerController::TogglePause()
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->TogglePause();
+	}
+}
+
+void ACytraPlayerController::CycleSpeed()
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->CycleSpeed();
+	}
+}
+
+void ACytraPlayerController::RestartMatch()
+{
+	if (ACytraGameMode* GameMode = GetWorld()->GetAuthGameMode<ACytraGameMode>())
+	{
+		GameMode->RestartMatch();
 	}
 }

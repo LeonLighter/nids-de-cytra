@@ -21,7 +21,7 @@ public:
 	ACytraGameState();
 
 	/** Copies the displayed values and broadcasts OnMatchChanged if any changed. */
-	void UpdateFromMatch(const FCytraMatch& Match);
+	void UpdateFromMatch(const FCytraMatch& Match, bool bInPaused, int32 InSpeed);
 
 	/** Fires when a displayed value changes. */
 	FOnCytraMatchChanged OnMatchChanged;
@@ -57,6 +57,14 @@ public:
 	/** Enemies of the current wave still alive or still to spawn. */
 	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
 	int32 EnemiesLeft = 0;
+
+	/** The match is paused: the simulation does not advance. */
+	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
+	bool bMatchPaused = false;
+
+	/** Game speed, 1 to 3. */
+	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
+	int32 Speed = 1;
 
 	/** Changes whenever a job is ordered, taken, started or finished, so the order panel knows to redraw. */
 	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")

@@ -9,7 +9,7 @@ ACytraGameState::ACytraGameState()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ACytraGameState::UpdateFromMatch(const FCytraMatch& Match)
+void ACytraGameState::UpdateFromMatch(const FCytraMatch& Match, bool bInPaused, int32 InSpeed)
 {
 	bool bChanged = false;
 	auto Set = [&bChanged](auto& Field, const auto Value)
@@ -31,6 +31,8 @@ void ACytraGameState::UpdateFromMatch(const FCytraMatch& Match)
 	Set(CountdownSeconds, Countdown.IsSet() ? static_cast<int32>(FMath::CeilToDouble(Countdown.GetValue())) : 0);
 	Set(EarlyLaunchBonus, Countdown.IsSet() ? Match.GetBalance().EarlyLaunchBonus(Countdown.GetValue()) : 0);
 	Set(EnemiesLeft, Match.GetEnemies().Num() + Match.GetPendingSpawns());
+	Set(bMatchPaused, bInPaused);
+	Set(Speed, InSpeed);
 
 	uint32 Jobs = GetTypeHash(Match.GetJobs().Num());
 	for (const FCytraJob& Job : Match.GetJobs())

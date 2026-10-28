@@ -28,9 +28,29 @@ namespace
 	constexpr float ZapJitter = 12.0f / 40.0f;
 	constexpr float BlastWidth = 3.0f / 40.0f;
 	constexpr int32 BlastSegments = 40;
+	/** The ring on the nest widens from 20 to 56 pixels, 4 pixels wide. */
+	constexpr float LeakStart = 20.0f / 40.0f;
+	constexpr float LeakGrowth = 36.0f / 40.0f;
+	constexpr float LeakWidth = 4.0f / 40.0f;
 
 	constexpr float ZapSeconds = 0.16f;
 	constexpr float BlastSeconds = 0.35f;
+	constexpr float LeakSeconds = 0.6f;
+
+	float Lifetime(ECytraEffectKind Kind)
+	{
+		switch (Kind)
+		{
+		case ECytraEffectKind::Zap:
+			return ZapSeconds;
+		case ECytraEffectKind::Blast:
+			return BlastSeconds;
+		case ECytraEffectKind::Leak:
+			return LeakSeconds;
+		default:
+			return 0.0f;
+		}
+	}
 
 	/** The jitter of the prototype: a fixed pseudo-random number in [0, 1). */
 	double Hash(double X, double Y)
@@ -82,11 +102,13 @@ void ACytraShots::Show(const ACytraBoard& Board, const TArray<FCytraShot>& Shots
 		Shells = MakeInstances(TEXT("Shells"), SphereMesh, TEXT("14181f"));
 		Zaps = MakeInstances(TEXT("Zaps"), CubeMesh, TEXT("8fe9f2"));
 		Blasts = MakeInstances(TEXT("Blasts"), CubeMesh, TEXT("f0a04b"));
+		Leaks = MakeInstances(TEXT("Leaks"), CubeMesh, TEXT("e2695b"));
 	}
 	Bolts->ClearInstances();
 	Shells->ClearInstances();
 	Zaps->ClearInstances();
 	Blasts->ClearInstances();
+	Leaks->ClearInstances();
 
 	const float Cell = ACytraBoard::CellSize;
 	for (const FCytraShot& Shot : Shots)
@@ -109,7 +131,10 @@ void ACytraShots::Show(const ACytraBoard& Board, const TArray<FCytraShot>& Shots
 
 	for (FCytraEffect& Effect : NewEffects)
 	{
-		Running.Add(FRunningEffect{ MoveTemp(Effect), 0.0f });
+		if (Lifetime(Effect.Kind) > 0.0f)
+		{
+			Running.Add(FRunningEffect{ MoveTemp(Effect), 0.0f });
+		}
 	}
 	for (FRunningEffect& Entry : Running)
 	{
@@ -129,6 +154,11 @@ void ACytraShots::Show(const ACytraBoard& Board, const TArray<FCytraShot>& Shots
 				Previous = Next;
 			}
 		}
+		else if (Effect.Kind == ECytraEffectKind::Leak)
+		{
+			const float Ratio = FMath::Min(1.0f, Entry.Age / LeakSeconds);
+			CytraShapes::AddRing(*Leaks, At(Board, Effect.To, ShotHeight), (LeakStart + LeakGrowth * Ratio) * Cell, LeakWidth * Cell, Thin, BlastSegments);
+		}
 		else
 		{
 			// The ring widens from 30 % of the splash radius to all of it.
@@ -140,6 +170,6 @@ void ACytraShots::Show(const ACytraBoard& Board, const TArray<FCytraShot>& Shots
 	}
 	Running.RemoveAll([](const FRunningEffect& Entry)
 	{
-		return Entry.Age >= (Entry.Effect.Kind == ECytraEffectKind::Zap ? ZapSeconds : BlastSeconds);
+		return Entry.Age >= Lifetime(Entry.Effect.Kind);
 	});
 }
