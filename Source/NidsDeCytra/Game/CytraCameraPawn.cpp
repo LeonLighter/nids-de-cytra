@@ -18,10 +18,15 @@ ACytraCameraPawn::ACytraCameraPawn()
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
+	// The pawn carries the view angle; the camera looks along it.
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(RootComponent);
-	Camera->SetRelativeRotation(FRotator(-90.0f, 0.0f, 0.0f));
 	Camera->bUsePawnControlRotation = false;
+	Camera->SetProjectionMode(ECameraProjectionMode::Orthographic);
+	// Fixed clip planes, set from the camera distance: the whole board always lies between them.
+	Camera->SetAutoCalculateOrthoPlanes(false);
+	Camera->SetUpdateOrthoPlanes(false);
+	Camera->SetOrthoNearClipPlane(0.0f);
 }
 
 void ACytraCameraPawn::BeginPlay()
@@ -38,10 +43,16 @@ void ACytraCameraPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void ACytraCameraPawn::HandleViewportResized(FViewport* Viewport, uint32 Unused)
 {
-	if (GEngine && GEngine->GameViewport && Viewport == GEngine->GameViewport->Viewport)
+	if (bFramed && GEngine && GEngine->GameViewport && Viewport == GEngine->GameViewport->Viewport)
 	{
-		FrameBounds(FramedBounds);
+		View.Clamp(GetScreen());
+		ApplyView();
 	}
+}
+
+void ACytraCameraPawn::SetCameraLook(const FCytraCameraLook& InLook)
+{
+	Look = InLook;
 }
 
 void ACytraCameraPawn::FrameBounds(const FBox& Bounds)
@@ -50,33 +61,56 @@ void ACytraCameraPawn::FrameBounds(const FBox& Bounds)
 	{
 		return;
 	}
-	FramedBounds = Bounds;
+	View = FCytraIsoView(Look, Bounds);
+	bFramed = true;
+	ApplyView();
+}
 
-	float Aspect = 16.0f / 9.0f;
-	// Shares of the screen width and height taken by the order panel and the top bar.
-	float PanelShare = 0.0f;
-	float BarShare = 0.0f;
+void ACytraCameraPawn::Pan(const FVector2D& Direction, float DeltaSeconds)
+{
+	if (bFramed && !Direction.IsNearlyZero())
+	{
+		const FVector2d Clamped(FMath::Clamp(Direction.X, -1.0, 1.0), FMath::Clamp(Direction.Y, -1.0, 1.0));
+		View.Pan(Clamped * Look.PanSpeed * DeltaSeconds, GetScreen());
+		ApplyView();
+	}
+}
+
+void ACytraCameraPawn::ZoomAt(float Notches, const FVector2D& CursorPixels)
+{
+	if (bFramed && !FMath::IsNearlyZero(Notches))
+	{
+		View.ZoomAt(FMath::Pow(Look.ZoomStep, static_cast<double>(Notches)), FVector2d(CursorPixels), GetScreen());
+		ApplyView();
+	}
+}
+
+FCytraScreen ACytraCameraPawn::GetScreen() const
+{
+	FCytraScreen Screen;
 	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
 	{
 		const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
 		if (Size.X > 0 && Size.Y > 0)
 		{
-			Aspect = static_cast<float>(Size.X) / Size.Y;
+			// The interface is laid out in Slate units, scaled by the DPI curve.
 			const float DpiScale = GetDefault<UUserInterfaceSettings>()->GetDPIScaleBasedOnSize(Size);
-			PanelShare = FMath::Clamp(CytraLayout::PanelWidth * DpiScale / Size.X, 0.0f, 0.5f);
-			BarShare = FMath::Clamp(CytraLayout::TopBarHeight * DpiScale / Size.Y, 0.0f, 0.5f);
+			Screen.Size = FVector2d(Size.X, Size.Y);
+			Screen.Panel = FMath::Min(CytraLayout::PanelWidth * DpiScale, Size.X * 0.5);
+			Screen.Bar = FMath::Min(CytraLayout::TopBarHeight * DpiScale, Size.Y * 0.5);
+			return Screen;
 		}
 	}
+	// No viewport yet: assume 16:9 with the interface at its nominal size.
+	Screen.Panel = CytraLayout::PanelWidth;
+	Screen.Bar = CytraLayout::TopBarHeight;
+	return Screen;
+}
 
-	// The horizontal field of view is fixed; the vertical one follows the aspect ratio.
-	const float TanHalfH = FMath::Tan(FMath::DegreesToRadians(Camera->FieldOfView * 0.5f));
-	const float TanHalfV = TanHalfH / Aspect;
-	const FVector Extent = Bounds.GetExtent() * FramingMargin;
-	const float Height = FMath::Max(Extent.Y / (TanHalfH * (1.0f - PanelShare)), Extent.X / (TanHalfV * (1.0f - BarShare)));
-
-	// Shift the camera so the board sits in the middle of the free area: screen right is world +Y, screen up is world +X.
-	const FVector Center = Bounds.GetCenter();
-	const float OffsetY = PanelShare * Height * TanHalfH;
-	const float OffsetX = BarShare * Height * TanHalfV;
-	SetActorLocationAndRotation(FVector(Center.X + OffsetX, Center.Y + OffsetY, Bounds.Max.Z + Height), FRotator::ZeroRotator);
+void ACytraCameraPawn::ApplyView()
+{
+	const FCytraScreen Screen = GetScreen();
+	SetActorLocationAndRotation(View.CameraLocation(Screen), View.GetRotation());
+	Camera->SetOrthoWidth(static_cast<float>(View.OrthoWidth(Screen)));
+	Camera->SetOrthoFarClipPlane(static_cast<float>(View.CameraDistance() * 2.0));
 }

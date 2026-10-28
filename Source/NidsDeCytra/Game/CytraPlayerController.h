@@ -9,6 +9,7 @@
 class UCytraHudWidget;
 class UInputAction;
 class UInputMappingContext;
+struct FInputActionValue;
 struct FCytraOrderAction;
 
 DECLARE_MULTICAST_DELEGATE(FOnCytraSelectionChanged);
@@ -59,6 +60,14 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> ClickAction;
 
+	/** Moves the view once zoomed in: ZQSD on a French keyboard, WASD on an English one. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> PanAction;
+
+	/** Mouse wheel. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> ZoomAction;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> InputContext;
 
@@ -66,6 +75,8 @@ private:
 	void CreateInputObjects();
 	/** Selects the cell under the cursor. Clicks outside the board change nothing. */
 	void HandleClick();
+	void HandlePan(const FInputActionValue& Value);
+	void HandleZoom(const FInputActionValue& Value);
 
 	/** The cell under the cursor, if any. */
 	TOptional<FIntPoint> CellUnderCursor() const;

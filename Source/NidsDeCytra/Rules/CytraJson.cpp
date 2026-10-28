@@ -137,6 +137,16 @@ namespace CytraJson
 		return true;
 	}
 
+	bool FReader::OptionalObject(const TCHAR* Field, TSharedPtr<FJsonObject>& Out) const
+	{
+		Out.Reset();
+		if (!Obj.HasField(Field))
+		{
+			return true;
+		}
+		return Object(Field, Out);
+	}
+
 	bool FReader::Array(const TCHAR* Field, const TArray<TSharedPtr<FJsonValue>>*& Out) const
 	{
 		if (!Obj.TryGetArrayField(Field, Out))

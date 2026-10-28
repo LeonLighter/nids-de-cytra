@@ -77,6 +77,7 @@ void ACytraGameMode::RestartPlayer(AController* NewPlayer)
 	ACytraBoard* CurrentBoard = GetOrCreateBoard();
 	if (CameraPawn && CurrentBoard)
 	{
+		CameraPawn->SetCameraLook(EnsureLooks().Camera);
 		CameraPawn->FrameBounds(CurrentBoard->GetBoardBounds());
 	}
 }
@@ -147,6 +148,22 @@ ACytraBoard* ACytraGameMode::GetOrCreateBoard()
 	return Board;
 }
 
+const FCytraLooks& ACytraGameMode::EnsureLooks()
+{
+	if (!bLooksLoaded)
+	{
+		bLooksLoaded = true;
+		// Without looks the match still runs, with the default shapes and camera.
+		FString Error;
+		if (!FCytraLooks::LoadFromFile(FPaths::ProjectContentDir() / LooksFile, Looks, Error))
+		{
+			Looks = FCytraLooks();
+			UE_LOG(LogCytra, Error, TEXT("Match: cannot load looks: %s"), *Error);
+		}
+	}
+	return Looks;
+}
+
 bool ACytraGameMode::CreateMatch()
 {
 	FCytraBalance Balance;
@@ -161,11 +178,7 @@ bool ACytraGameMode::CreateMatch()
 
 	Match = MakeUnique<FCytraMatch>(Board->GetMap(), Balance, Waves);
 
-	// Without looks the match still runs, with the default shape.
-	if (!FCytraLooks::LoadFromFile(FPaths::ProjectContentDir() / LooksFile, Looks, Error))
-	{
-		UE_LOG(LogCytra, Error, TEXT("Match: cannot load looks: %s"), *Error);
-	}
+	EnsureLooks();
 
 	FActorSpawnParameters Params;
 	Params.ObjectFlags |= RF_Transient;

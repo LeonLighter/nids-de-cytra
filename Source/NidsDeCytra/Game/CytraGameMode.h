@@ -62,6 +62,9 @@ public:
 	/** The board placed in the level, or a new one spawned at the origin. Built on first access. */
 	ACytraBoard* GetOrCreateBoard();
 
+	/** Loads Looks.json on first call: the camera needs it before the match starts. */
+	const FCytraLooks& EnsureLooks();
+
 	/** Null until the board is built. */
 	const ACytraBoard* GetBoard() const { return Board; }
 
@@ -187,6 +190,7 @@ private:
 
 	TUniquePtr<FCytraMatch> Match;
 	FCytraLooks Looks;
+	bool bLooksLoaded = false;
 	/** Enemy types already reported as having no look. */
 	TSet<FName> EnemiesWithoutLook;
 

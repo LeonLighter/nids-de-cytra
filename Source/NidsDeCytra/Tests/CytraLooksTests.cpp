@@ -47,6 +47,11 @@ bool FCytraLooksLoadsLooksTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Bandit size"), Bandit.Size, 0.35);
 	TestTrue(TEXT("Bandit color"), Bandit.Color.Equals(FLinearColor::FromSRGBColor(FColor(0xa9, 0x81, 0x4e))));
 
+	// The camera: true isometry seen from the south-west.
+	TestEqual(TEXT("Camera pitch"), Looks.Camera.Pitch, -35.264);
+	TestEqual(TEXT("Camera yaw"), Looks.Camera.Yaw, 45.0);
+	TestTrue(TEXT("Camera zooms in"), Looks.Camera.MaxZoom > 1.0);
+
 	const FCytraLook& Unknown = Looks.EnemyLook(TEXT("Dragon"));
 	TestEqual(TEXT("Default shape for an unknown enemy"), Unknown.Shape, FName(TEXT("Sphere")));
 	return true;
@@ -75,6 +80,12 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 		{ TEXT("Tower without top"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Mortar":{"base":{"shape":"Cube","color":"3a404a","size":0.6}}}})"), TEXT("towers.Mortar.top") },
 		{ TEXT("Bad tower base"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Mortar":{"base":{"shape":"Torus","color":"3a404a","size":0.6},"top":{"shape":"Cube","color":"07090c","size":0.3}}}})"), TEXT("towers.Mortar.base.shape") },
 		{ TEXT("Aims not a boolean"), TEXT(R"({"enemies":{},"workers":{},"towers":{"Ballista":{"base":{"shape":"Cube","color":"3a404a","size":0.6},"top":{"shape":"Cube","color":"07090c","size":0.3},"aims":1}}})"), TEXT("towers.Ballista.aims") },
+		{ TEXT("Camera not an object"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":3})"), TEXT("camera") },
+		{ TEXT("Camera looking up"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"pitch":20}})"), TEXT("camera.pitch") },
+		{ TEXT("Camera margin below 1"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"margin":0.9}})"), TEXT("camera.margin") },
+		{ TEXT("Camera zooming out only"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"maxZoom":0.5}})"), TEXT("camera.maxZoom") },
+		{ TEXT("Camera zoom step of 1"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"zoomStep":1}})"), TEXT("camera.zoomStep") },
+		{ TEXT("Camera not panning"), TEXT(R"({"enemies":{},"workers":{},"towers":{},"camera":{"panSpeed":0}})"), TEXT("camera.panSpeed") },
 	};
 	for (const FCase& Case : Cases)
 	{
@@ -87,6 +98,7 @@ bool FCytraLooksRejectsBadLooksTest::RunTest(const FString& Parameters)
 	FCytraLooks Looks;
 	FString Error;
 	TestTrue(TEXT("Leading # accepted"), FCytraLooks::ParseJson(TEXT(R"({"enemies":{"Bandit":{"shape":"Cone","color":"#A9814E","size":0.4}},"workers":{},"towers":{}})"), Looks, Error));
+	TestEqual(TEXT("Default camera without a camera section"), Looks.Camera.Pitch, FCytraCameraLook().Pitch);
 	return true;
 }
 
