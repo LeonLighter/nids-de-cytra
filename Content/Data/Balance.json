@@ -1,9 +1,9 @@
 {
   "start": { "gold": 170, "eggs": 12 },
-  "crew": { "max": 8, "speed": 3.2, "startRoles": ["Carpenter", "Miner"], "dismissRefund": 0.7 },
+  "crew": { "max": 8, "speed": 3.2, "startRoles": [], "dismissRefund": 0.7 },
   "roles": {
     "Miner": { "recruitCost": 40 },
-    "Carpenter": { "recruitCost": 50 },
+    "Carpenter": { "recruitCost": 50, "freeRecruits": 1 },
     "Engineer": { "recruitCost": 60 }
   },
   "works": {
@@ -28,6 +28,6 @@
     "Soldier": { "hp": 140, "speed": 0.85, "gold": 18, "eggs": 2 },
     "Captain": { "hp": 1250, "speed": 0.6, "gold": 120, "eggs": 5 }
   },
-  "waves": { "hpScalePerWave": 0.2, "endBonusBase": 25, "endBonusPerWave": 6, "prepBase": 20, "prepScale": 20, "threatLevels": 5, "earlyLaunchGoldPerSecond": 1 },
+  "waves": { "hpScalePerWave": 0.2, "endBonusBase": 25, "endBonusPerWave": 6, "prepBase": 60, "prepScale": 0, "threatLevels": 5, "earlyLaunchGoldPerSecond": 0 },
   "targeting": { "minX": -0.4 }
 }

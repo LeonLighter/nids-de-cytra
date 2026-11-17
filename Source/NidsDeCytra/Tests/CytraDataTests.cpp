@@ -8,6 +8,7 @@
 #include "Rules/CytraBalance.h"
 #include "Rules/CytraBalanceLoader.h"
 #include "Rules/CytraMapDef.h"
+#include "Rules/CytraMatch.h"
 #include "Rules/CytraWaveLoader.h"
 #include "Rules/CytraWaveSchedule.h"
 
@@ -88,6 +89,37 @@ bool FCytraDataLoadsBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Max level"), Balance.Upgrade.MaxLevel, 3);
 	TestEqual(TEXT("Mine slots"), Balance.MineSlots, 2);
 	TestEqual(TEXT("Targeting min x"), Balance.TargetingMinX, -0.4);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraDataLiveBalanceTest, "Cytra.Data.Balance.Live", CytraTest::Flags)
+
+bool FCytraDataLiveBalanceTest::RunTest(const FString& Parameters)
+{
+	// The balance the game loads, which moves away from the prototype from J66 on.
+	FCytraMapDef Map;
+	FCytraBalance Balance;
+	FCytraWaveSchedule Waves;
+	FString Error;
+	if (!CytraTest::LoadMapAndLiveBalance(*this, Map, Balance)
+		|| !TestTrue(TEXT("Waves load with the live balance"), FCytraWaveLoader::LoadFromFile(CytraTest::DataPath(TEXT("Waves/Passe01.json")), Balance, Map, Waves, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	TestEqual(TEXT("Start gold"), Balance.StartGold, 170);
+	TestTrue(TEXT("Empty starting crew"), Balance.StartRoles.IsEmpty());
+	TestEqual(TEXT("First carpenter free"), Balance.Roles.FindChecked(TEXT("Carpenter")).FreeRecruits, 1);
+	TestEqual(TEXT("No free miner"), Balance.Roles.FindChecked(TEXT("Miner")).FreeRecruits, 0);
+	TestEqual(TEXT("No early launch bonus"), Balance.EarlyLaunchBonus(45.0), 0);
+	const FCytraMatch Match(Map, Balance, Waves);
+	TestFalse(TEXT("No countdown before wave 1"), Match.GetCountdown().IsSet());
+	TestEqual(TEXT("Nobody at the start"), Match.GetWorkers().Num(), 0);
+	for (int32 Index = 1; Index < Waves.Num(); ++Index)
+	{
+		TestEqual(FString::Printf(TEXT("Preparation before wave %d"), Index + 1), Waves.PrepTime(Index, Balance), 60);
+	}
 	return true;
 }
 
