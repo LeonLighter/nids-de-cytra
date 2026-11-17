@@ -56,7 +56,8 @@ FCytraMatch::FCytraMatch(const FCytraMapDef& InMap, const FCytraBalance& InBalan
 	}
 	for (const FName Role : Balance.StartRoles)
 	{
-		AddWorker(Role);
+		// As in J65, a starting worker is refunded on its recruitment cost.
+		AddWorker(Role, Balance.Roles.FindChecked(Role).RecruitCost);
 	}
 }
 
@@ -405,7 +406,8 @@ FCytraRecruitCheck FCytraMatch::CheckRecruit(FName Role) const
 		Result.Refusal = ECytraRecruitRefusal::UnknownRole;
 		return Result;
 	}
-	Result.Cost = Def->RecruitCost;
+	Result.bFree = FreeRecruitsUsed.FindRef(Role) < Def->FreeRecruits;
+	Result.Cost = Result.bFree ? 0 : Def->RecruitCost;
 	if (Workers.Num() >= Balance.MaxCrew)
 	{
 		Result.Refusal = ECytraRecruitRefusal::CrewFull;
@@ -426,7 +428,11 @@ FCytraRecruitCheck FCytraMatch::Recruit(FName Role)
 		return Result;
 	}
 	Wallet.TrySpend(Result.Cost);
-	AddWorker(Role);
+	if (Result.bFree)
+	{
+		++FreeRecruitsUsed.FindOrAdd(Role);
+	}
+	AddWorker(Role, Result.Cost);
 	Result.Worker = Workers.Last().Id;
 	Manage();
 	return Result;
@@ -448,9 +454,8 @@ FCytraDismissCheck FCytraMatch::CheckDismiss(int32 WorkerId) const
 	{
 		Result.Role = Worker->Role;
 		Result.Job = Worker->Job;
-		const FCytraRoleDef* Def = Balance.Roles.Find(Worker->Role);
 		// The margin keeps a product such as 50 x 0.7 from rounding down to 34.
-		Result.Refund = Def ? FMath::FloorToInt32(Def->RecruitCost * Balance.DismissRefund + 1e-6) : 0;
+		Result.Refund = FMath::FloorToInt32(Worker->PaidCost * Balance.DismissRefund + 1e-6);
 	}
 	return Result;
 }
@@ -487,11 +492,12 @@ FCytraJob* FCytraMatch::FindJob(int32 JobId)
 	return Jobs.FindByPredicate([JobId](const FCytraJob& Job) { return Job.Id == JobId; });
 }
 
-void FCytraMatch::AddWorker(FName Role)
+void FCytraMatch::AddWorker(FName Role, int32 PaidCost)
 {
 	FCytraWorker& Worker = Workers.AddDefaulted_GetRef();
 	Worker.Id = ++NextId;
 	Worker.Role = Role;
+	Worker.PaidCost = PaidCost;
 	Worker.Position = FVector2d(Map.Camp.X, Map.Camp.Y);
 }
 

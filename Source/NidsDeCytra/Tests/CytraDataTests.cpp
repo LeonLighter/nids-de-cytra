@@ -130,6 +130,9 @@ bool FCytraDataRejectsBadBalanceTest::RunTest(const FString& Parameters)
 	ExpectBalanceRejected(*this, TEXT("Unknown start role"),
 		[](FJsonObject& Root) { Root.GetObjectField(TEXT("crew"))->SetArrayField(TEXT("startRoles"), { MakeShared<FJsonValueString>(TEXT("Smith")) }); },
 		TEXT("crew.startRoles: unknown role 'Smith'"));
+	ExpectBalanceRejected(*this, TEXT("Negative free recruits"),
+		[](FJsonObject& Root) { Entry(Root, TEXT("roles"), TEXT("Miner"))->SetNumberField(TEXT("freeRecruits"), -1); },
+		TEXT("roles.Miner.freeRecruits: must be at least 0"));
 	ExpectBalanceRejected(*this, TEXT("Refund above the cost"),
 		[](FJsonObject& Root) { Root.GetObjectField(TEXT("crew"))->SetNumberField(TEXT("dismissRefund"), 1.5); },
 		TEXT("crew.dismissRefund: must be at most 1"));

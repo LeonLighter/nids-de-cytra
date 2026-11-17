@@ -10,6 +10,8 @@ struct FCytraRoleDef
 {
 	FName Id;
 	int32 RecruitCost = 0;
+	/** Recruits of this specialty that cost nothing, the first ones of the match. */
+	int32 FreeRecruits = 0;
 };
 
 /** A job that opens a tile: clearing, bridge, ladder, opening the mine, raising the outpost. */
