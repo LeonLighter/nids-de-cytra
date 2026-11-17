@@ -24,16 +24,31 @@ namespace CytraTest
 		return FPaths::ProjectContentDir() / TEXT("Data") / Relative;
 	}
 
-	bool LoadMapAndBalance(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance)
+	FString ReferenceBalancePath()
+	{
+		return FPaths::GameSourceDir() / TEXT("NidsDeCytra/Tests/Reference/Balance.json");
+	}
+
+	static bool LoadMapAndBalanceFile(FAutomationTestBase& Test, const FString& BalancePath, FCytraMapDef& OutMap, FCytraBalance& OutBalance)
 	{
 		FString Error;
 		if (!FCytraMapLoader::LoadFromFile(DataPath(TEXT("Maps/Passe01.json")), OutMap, Error)
-			|| !FCytraBalanceLoader::LoadFromFile(DataPath(TEXT("Balance.json")), OutBalance, Error))
+			|| !FCytraBalanceLoader::LoadFromFile(BalancePath, OutBalance, Error))
 		{
 			Test.AddError(Error);
 			return false;
 		}
 		return true;
+	}
+
+	bool LoadMapAndBalance(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance)
+	{
+		return LoadMapAndBalanceFile(Test, ReferenceBalancePath(), OutMap, OutBalance);
+	}
+
+	bool LoadMapAndLiveBalance(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance)
+	{
+		return LoadMapAndBalanceFile(Test, DataPath(TEXT("Balance.json")), OutMap, OutBalance);
 	}
 
 	bool LoadAll(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance, FCytraWaveSchedule& OutWaves)
