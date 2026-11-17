@@ -528,6 +528,49 @@ bool FCytraPanelCrewListTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraPanelCrewFreeTest, "Cytra.UI.Panel.CrewFreeAndEmpty", CytraTest::Flags)
+
+bool FCytraPanelCrewFreeTest::RunTest(const FString& Parameters)
+{
+	FCytraMapDef Map;
+	FCytraBalance Balance;
+	FCytraWaveSchedule Waves;
+	if (!CytraTest::LoadAll(*this, Map, Balance, Waves))
+	{
+		return false;
+	}
+	Balance.StartRoles.Reset();
+	Balance.Roles.FindChecked(TEXT("Carpenter")).FreeRecruits = 1;
+	FCytraMatch Match(Map, Balance, Waves);
+
+	auto CostOf = [](const FCytraPanelView& View, const TCHAR* Role)
+	{
+		const FCytraPanelAction* Action = View.Actions.FindByPredicate([Role](const FCytraPanelAction& Entry) { return Entry.Recruit == FName(Role); });
+		return Action ? Action->Cost.ToString() : FString();
+	};
+
+	// An empty crew says so, and the first carpenter is free.
+	const FCytraPanelView Empty = FCytraPanelView::BuildCrew(Match);
+	TestEqual(TEXT("No worker listed"), Empty.Workers.Num(), 0);
+	if (TestEqual(TEXT("One line"), Empty.Lines.Num(), 1))
+	{
+		TestEqual(TEXT("Empty crew line"), Empty.Lines[0].Text.ToString(), FString(TEXT("Aucun ouvrier : recrute ton équipe ci-dessous.")));
+	}
+	TestEqual(TEXT("Free carpenter"), CostOf(Empty, TEXT("Carpenter")), FString(TEXT("Gratuit")));
+	TestEqual(TEXT("Miner paid"), CostOf(Empty, TEXT("Miner")), FString(TEXT("40 or")));
+
+	// Once used, the carpenter shows his price, the line goes and the free recruit is refunded nothing.
+	Match.Recruit(TEXT("Carpenter"));
+	const FCytraPanelView One = FCytraPanelView::BuildCrew(Match);
+	TestEqual(TEXT("No line with a crew"), One.Lines.Num(), 0);
+	TestEqual(TEXT("Carpenter paid"), CostOf(One, TEXT("Carpenter")), FString(TEXT("50 or")));
+	if (TestEqual(TEXT("One worker"), One.Workers.Num(), 1))
+	{
+		TestEqual(TEXT("Free recruit refund"), One.Workers[0].Dismiss.ToString(), FString(TEXT("Renvoyer (+0)")));
+	}
+	return true;
+}
+
 } // namespace CytraPanelTest
 
 #endif

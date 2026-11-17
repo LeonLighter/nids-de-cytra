@@ -74,6 +74,8 @@ Crew.Recruit,"Recruter un {0}","Bouton de recrutement. {0} : spécialité (Role.
 Crew.Spec,"Spécialité : {0}","Sous un bouton de recrutement. {0} : Role.*.Spec"
 Crew.Dismiss,"Renvoyer (+{0})","Bouton sur une ligne de l'équipe. {0} : or rendu"
 Crew.DismissConfirm,"Confirmer ?","Bouton Renvoyer après un premier clic, pendant 3 secondes"
+Crew.Free,"Gratuit","Coût d'un recrutement gratuit (premier charpentier)"
+Crew.Empty,"Aucun ouvrier : recrute ton équipe ci-dessous.","Panneau d'équipe, quand l'équipe est vide"
 Role.Miner.Short,"mineur","Spécialité, nom court"
 Role.Carpenter.Short,"charpentier","Spécialité, nom court"
 Role.Engineer.Short,"ingénieur","Spécialité, nom court"
