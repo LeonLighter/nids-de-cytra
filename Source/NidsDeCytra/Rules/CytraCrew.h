@@ -92,3 +92,23 @@ struct FCytraRecruitCheck
 
 	bool IsAccepted() const { return Refusal == ECytraRecruitRefusal::None; }
 };
+
+/** Why a dismissal is refused, in the order the checks run. */
+enum class ECytraDismissRefusal : uint8
+{
+	None,
+	GameOver,
+	UnknownWorker,
+};
+
+struct FCytraDismissCheck
+{
+	ECytraDismissRefusal Refusal = ECytraDismissRefusal::None;
+	FName Role;
+	/** Gold paid back. */
+	int32 Refund = 0;
+	/** Job the worker had taken, which waits for another worker, 0 if none. */
+	int32 Job = 0;
+
+	bool IsAccepted() const { return Refusal == ECytraDismissRefusal::None; }
+};

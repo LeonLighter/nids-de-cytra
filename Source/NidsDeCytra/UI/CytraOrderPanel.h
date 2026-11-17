@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/SlateWrapperTypes.h"
+#include "Engine/TimerHandle.h"
 #include "UI/CytraPanelView.h"
 #include "CytraOrderPanel.generated.h"
 
@@ -66,8 +67,12 @@ private:
 	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View);
 	void AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber);
 	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action);
-	/** A worker of the crew list: a dot of its color, its name and its state. */
+	/** A worker of the crew list: a dot of its color, its name, its state and its dismiss button. */
 	void AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Worker, bool bLast);
+	/** A first click on a dismiss button asks for a confirmation, a second one within 3 seconds dismisses. */
+	void HandleDismissClicked(int32 WorkerId);
+	/** Puts back the label of the dismiss button waiting for its confirmation, if any. */
+	void DisarmDismiss();
 	UTextBlock* MakeText(int32 Size, const FLinearColor& Color, bool bBold, const FText& Text);
 	UCytraPanelButton* MakeButton(const FLinearColor& Background, TFunction<void()> Callback);
 
@@ -85,6 +90,19 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> CrewButtons;
+
+	/** State of each worker of the crew list, in its order: updated in place, so that the dismiss buttons stay under the cursor. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> WorkerStates;
+
+	/** Dismiss button labels, by worker id. */
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UTextBlock>> DismissLabels;
+
+	TMap<int32, FText> DismissTexts;
+	/** Worker whose dismiss button waits for its confirmation, 0 if none. */
+	int32 DismissArmedWorker = 0;
+	FTimerHandle DismissTimer;
 
 	FString ShownSignature;
 	FString ShownCrewListSignature;

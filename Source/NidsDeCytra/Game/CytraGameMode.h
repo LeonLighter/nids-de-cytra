@@ -62,6 +62,9 @@ public:
 	/** The board placed in the level, or a new one spawned at the origin. Built on first access. */
 	ACytraBoard* GetOrCreateBoard();
 
+	/** Loads Looks.json on first call: the camera needs it before the match starts. */
+	const FCytraLooks& EnsureLooks();
+
 	/** Null until the board is built. */
 	const ACytraBoard* GetBoard() const { return Board; }
 
@@ -79,6 +82,9 @@ public:
 
 	/** Player order: recruit a worker of this specialty, who arrives at the main camp. */
 	FCytraRecruitCheck Recruit(FName Specialty);
+
+	/** Player order: dismiss a worker for part of its recruitment cost. */
+	FCytraDismissCheck Dismiss(int32 WorkerId);
 
 	/** Frames the selected cell on the board, or hides the frame. On a slot, also shows the tower range. */
 	void ShowSelection(const TOptional<FIntPoint>& Cell);
@@ -187,6 +193,7 @@ private:
 
 	TUniquePtr<FCytraMatch> Match;
 	FCytraLooks Looks;
+	bool bLooksLoaded = false;
 	/** Enemy types already reported as having no look. */
 	TSet<FName> EnemiesWithoutLook;
 

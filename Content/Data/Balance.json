@@ -1,6 +1,6 @@
 {
   "start": { "gold": 170, "eggs": 12 },
-  "crew": { "max": 8, "speed": 3.2, "startRoles": ["Carpenter", "Miner"] },
+  "crew": { "max": 8, "speed": 3.2, "startRoles": ["Carpenter", "Miner"], "dismissRefund": 0.7 },
   "roles": {
     "Miner": { "recruitCost": 40 },
     "Carpenter": { "recruitCost": 50 },

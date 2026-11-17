@@ -92,7 +92,8 @@ namespace
 		const FReader Crew(*Object, TEXT("crew"), Error);
 		if (!Crew.Integer(TEXT("max"), Balance.MaxCrew) || !CheckAtLeast(Crew, TEXT("max"), Balance.MaxCrew, 1)
 			|| !Crew.Number(TEXT("speed"), Balance.WorkerSpeed) || !CheckPositive(Crew, TEXT("speed"), Balance.WorkerSpeed)
-			|| !Crew.Array(TEXT("startRoles"), StartRoles))
+			|| !Crew.Array(TEXT("startRoles"), StartRoles)
+			|| !Crew.Number(TEXT("dismissRefund"), Balance.DismissRefund) || !CheckAtLeast(Crew, TEXT("dismissRefund"), Balance.DismissRefund, 0.0))
 		{
 			return false;
 		}
@@ -104,6 +105,10 @@ namespace
 				return false;
 			}
 			Balance.StartRoles.Add(Role);
+		}
+		if (Balance.DismissRefund > 1.0)
+		{
+			return Crew.Fail(TEXT("dismissRefund"), TEXT("must be at most 1"));
 		}
 		return Balance.StartRoles.Num() <= Balance.MaxCrew || Crew.Fail(TEXT("startRoles"), TEXT("more workers than the crew maximum"));
 	}

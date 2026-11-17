@@ -34,6 +34,9 @@ struct NIDSDECYTRA_API FCytraMessages
 	/** The recruit on the way, or why the recruitment is refused. */
 	static FCytraMessage FromRecruit(FName Role, const FCytraRecruitCheck& Check);
 
+	/** The worker gone and the gold paid back, or why the dismissal is refused. */
+	static FCytraMessage FromDismiss(const FCytraDismissCheck& Check);
+
 	/** The early launch bonus. Unset when there is none. */
 	static TOptional<FCytraMessage> FromLaunch(const FCytraLaunchResult& Result);
 };

@@ -297,6 +297,16 @@ float ACytraBoard::GetTileHeight(ECytraTileType Type) const
 	return Height ? FMath::Max(*Height, 1.0f) : 10.0f;
 }
 
+void ACytraBoard::SetTileHeights(const TMap<ECytraTileType, float>& Heights)
+{
+	if (bBuilt)
+	{
+		UE_LOG(LogCytra, Warning, TEXT("Board: tile heights set after the board was built, ignored"));
+		return;
+	}
+	TileHeights.Append(Heights);
+}
+
 FVector ACytraBoard::CellToWorld(const FIntPoint& Cell) const
 {
 	return GetActorTransform().TransformPosition(CellToLocal(Cell));
@@ -316,32 +326,68 @@ TOptional<FIntPoint> ACytraBoard::WorldToCell(const FVector& World) const
 
 TOptional<FIntPoint> ACytraBoard::CellUnderRay(const FVector& Origin, const FVector& Direction) const
 {
-	const FVector Up = GetActorUpVector();
-	const auto HitAtHeight = [&](float Height) -> TOptional<FVector>
+	// Seen at an angle, a ray can hit the side of a tall tile before reaching the top of a low one behind it:
+	// test it against every tile block, without the gaps between tiles, and keep the nearest hit.
+	const FTransform& ToWorld = GetActorTransform();
+	const FVector LocalOrigin = ToWorld.InverseTransformPosition(Origin);
+	const FVector LocalDirection = ToWorld.InverseTransformVector(Direction);
+	if (LocalDirection.IsNearlyZero())
 	{
-		const FPlane Plane(GetActorLocation() + Up * Height, Up);
-		const double Denominator = FVector::DotProduct(Direction, Up);
-		if (FMath::IsNearlyZero(Denominator))
+		return {};
+	}
+
+	// Entry distance of the ray into an axis-aligned box, by the slab method. Unset if it misses.
+	const auto Enter = [&LocalOrigin, &LocalDirection](const FBox& Box) -> TOptional<double>
+	{
+		double Near = 0.0;
+		double Far = TNumericLimits<double>::Max();
+		for (int32 Axis = 0; Axis < 3; ++Axis)
 		{
-			return {};
+			const double Start = LocalOrigin[Axis];
+			const double Step = LocalDirection[Axis];
+			if (FMath::IsNearlyZero(Step))
+			{
+				if (Start < Box.Min[Axis] || Start > Box.Max[Axis])
+				{
+					return {};
+				}
+				continue;
+			}
+			double T0 = (Box.Min[Axis] - Start) / Step;
+			double T1 = (Box.Max[Axis] - Start) / Step;
+			if (T0 > T1)
+			{
+				Swap(T0, T1);
+			}
+			Near = FMath::Max(Near, T0);
+			Far = FMath::Min(Far, T1);
+			if (Near > Far)
+			{
+				return {};
+			}
 		}
-		return FMath::RayPlaneIntersection(Origin, Direction, Plane);
+		return Near;
 	};
 
-	// Tiles have different heights: aim at ground level, then again at the top of the tile found there.
-	TOptional<FVector> Hit = HitAtHeight(0.0f);
-	TOptional<FIntPoint> Cell = Hit ? WorldToCell(*Hit) : TOptional<FIntPoint>();
-	for (int32 Pass = 0; Pass < 2 && Cell; ++Pass)
+	TOptional<FIntPoint> Best;
+	double BestDistance = TNumericLimits<double>::Max();
+	const FVector Half(CellSize * 0.5, CellSize * 0.5, 0.0);
+	for (int32 Y = 0; Y < Map.Rows; ++Y)
 	{
-		Hit = HitAtHeight(GetTileHeight(Map.Get(*Cell)));
-		const TOptional<FIntPoint> Next = Hit ? WorldToCell(*Hit) : TOptional<FIntPoint>();
-		if (!Next || *Next == *Cell)
+		for (int32 X = 0; X < Map.Cols; ++X)
 		{
-			break;
+			const FIntPoint Cell(X, Y);
+			const FVector Center = CellToLocal(Cell);
+			const FBox Block(Center - Half, Center + Half + FVector(0.0, 0.0, GetTileHeight(Map.Get(Cell))));
+			const TOptional<double> Distance = Enter(Block);
+			if (Distance && *Distance < BestDistance)
+			{
+				BestDistance = *Distance;
+				Best = Cell;
+			}
 		}
-		Cell = Next;
 	}
-	return Cell;
+	return Best;
 }
 
 FBox ACytraBoard::GetBoardBounds() const

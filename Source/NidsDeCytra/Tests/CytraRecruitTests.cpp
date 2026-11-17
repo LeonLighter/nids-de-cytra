@@ -134,6 +134,89 @@ bool FCytraCrewRecruitTakesJobTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraCrewDismissTest, "Cytra.Rules.Crew.Dismiss", CytraTest::Flags)
+
+bool FCytraCrewDismissTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+	const int32 CarpenterId = Match->GetWorkers()[0].Id;
+	const int32 MinerId = Match->GetWorkers()[1].Id;
+
+	// 70 % of the recruitment cost, starting crew included.
+	TestEqual(TEXT("Carpenter refund"), Match->CheckDismiss(CarpenterId).Refund, 35);
+	TestEqual(TEXT("Miner refund"), Match->CheckDismiss(MinerId).Refund, 28);
+	const FCytraRecruitCheck Hired = Match->Recruit(Engineer);
+	TestEqual(TEXT("Engineer refund"), Match->CheckDismiss(Hired.Worker).Refund, 42);
+	TestTrue(TEXT("Unknown worker refused"), Match->CheckDismiss(999).Refusal == ECytraDismissRefusal::UnknownWorker);
+
+	// An idle worker leaves and frees a place in the crew.
+	const int32 GoldBefore = Match->GetWallet().Gold;
+	const FCytraDismissCheck Gone = Match->Dismiss(Hired.Worker);
+	TestTrue(TEXT("Engineer dismissed"), Gone.IsAccepted());
+	TestNull(TEXT("Engineer gone"), Match->FindWorker(Hired.Worker));
+	TestEqual(TEXT("Crew size"), Match->GetWorkers().Num(), 2);
+	TestEqual(TEXT("Gold paid back"), Match->GetWallet().Gold, GoldBefore + 42);
+	TestEqual(TEXT("Refund counted"), Match->GetWallet().Refunded, 42);
+	TestFalse(TEXT("No second dismissal"), Match->Dismiss(Hired.Worker).IsAccepted());
+
+	// A busy worker can be dismissed: the job keeps its progress and waits for another worker of the specialty.
+	const FIntPoint Gap(9, 6);
+	Match->Order(Gap, FCytraOrderAction::Work(TEXT("Bridge")));
+	for (int32 Step = 0; Step < 60 * 60 && Match->FindJobAt(Gap)->Progress <= 0.0; ++Step)
+	{
+		Match->Step(1.0 / 60.0);
+	}
+	const double Progress = Match->FindJobAt(Gap)->Progress;
+	if (!TestTrue(TEXT("Bridge under way"), Progress > 0.0 && Match->FindJobAt(Gap)->Worker == CarpenterId))
+	{
+		return false;
+	}
+	const FCytraDismissCheck Busy = Match->Dismiss(CarpenterId);
+	TestTrue(TEXT("Busy carpenter dismissed"), Busy.IsAccepted());
+	TestEqual(TEXT("Its job is reported"), Busy.Job, Match->FindJobAt(Gap)->Id);
+	TestEqual(TEXT("The bridge waits"), Match->FindJobAt(Gap)->Worker, 0);
+	Match->Step(1.0);
+	TestEqual(TEXT("No progress without a carpenter"), Match->FindJobAt(Gap)->Progress, Progress);
+
+	const FCytraRecruitCheck Replacement = Match->Recruit(Carpenter);
+	TestEqual(TEXT("The recruit takes the bridge"), Match->FindJobAt(Gap)->Worker, Replacement.Worker);
+	TestEqual(TEXT("Progress kept"), Match->FindJobAt(Gap)->Progress, Progress);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraCrewDismissAfterEndTest, "Cytra.Rules.Crew.DismissAfterEnd", CytraTest::Flags)
+
+bool FCytraCrewDismissAfterEndTest::RunTest(const FString& Parameters)
+{
+	FCytraMapDef Map;
+	FCytraBalance Balance;
+	FCytraWaveSchedule Waves;
+	if (!CytraTest::LoadAll(*this, Map, Balance, Waves))
+	{
+		return false;
+	}
+	Balance.StartEggs = 1;
+	FCytraMatch Match(Map, Balance, Waves);
+	Match.LaunchWave();
+	for (int32 Step = 0; Step < 600 * 60 && !Match.IsOver(); ++Step)
+	{
+		Match.Step(1.0 / 60.0);
+	}
+	if (!TestTrue(TEXT("Match lost"), Match.GetPhase() == ECytraMatchPhase::Lost))
+	{
+		return false;
+	}
+	const int32 WorkerId = Match.GetWorkers()[0].Id;
+	TestTrue(TEXT("Dismissal refused once the match is over"), Match.Dismiss(WorkerId).Refusal == ECytraDismissRefusal::GameOver);
+	TestNotNull(TEXT("The worker stays"), Match.FindWorker(WorkerId));
+	return true;
+}
+
 }
 
 #endif

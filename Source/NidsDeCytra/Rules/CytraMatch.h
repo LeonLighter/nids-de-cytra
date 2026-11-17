@@ -171,6 +171,15 @@ public:
 	/** Pays for a recruit, who arrives at the main camp and may take a waiting job at once. */
 	FCytraRecruitCheck Recruit(FName Role);
 
+	/** Whether a worker can be dismissed now, and the gold it would pay back: a share of its specialty's recruitment cost. */
+	FCytraDismissCheck CheckDismiss(int32 WorkerId) const;
+
+	/**
+	 * Dismisses a worker, busy or not, and pays back the refund. Its job keeps its progress
+	 * and goes to the nearest free worker of the specialty, or waits for one.
+	 */
+	FCytraDismissCheck Dismiss(int32 WorkerId);
+
 	/** Events since the last call, oldest first. */
 	TArray<FCytraMatchEvent> ConsumeEvents();
 

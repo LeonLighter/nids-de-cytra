@@ -50,10 +50,13 @@ enum class ECytraCrewTone : uint8
 /** A line of the crew list. */
 struct FCytraPanelWorker
 {
+	int32 Id = 0;
 	FName Role;
 	FText Name;
 	FText State;
 	ECytraCrewTone Tone = ECytraCrewTone::Calm;
+	/** Label of its dismiss button, with the gold paid back. */
+	FText Dismiss;
 };
 
 /** An order the player can give on the selected cell, or a recruitment. */

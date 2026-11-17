@@ -71,6 +71,7 @@ bool FCytraDataLoadsBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Start gold"), Balance.StartGold, 170);
 	TestEqual(TEXT("Start eggs"), Balance.StartEggs, 12);
 	TestEqual(TEXT("Max crew"), Balance.MaxCrew, 8);
+	TestEqual(TEXT("Dismissal refund"), Balance.DismissRefund, 0.7);
 	TestEqual(TEXT("Start crew, carpenter first"), Balance.StartRoles, TArray<FName>{ TEXT("Carpenter"), TEXT("Miner") });
 	TestEqual(TEXT("Roles"), Balance.Roles.Num(), 3);
 	TestEqual(TEXT("Engineer recruit cost"), Balance.Roles.FindChecked(TEXT("Engineer")).RecruitCost, 60);
@@ -129,6 +130,9 @@ bool FCytraDataRejectsBadBalanceTest::RunTest(const FString& Parameters)
 	ExpectBalanceRejected(*this, TEXT("Unknown start role"),
 		[](FJsonObject& Root) { Root.GetObjectField(TEXT("crew"))->SetArrayField(TEXT("startRoles"), { MakeShared<FJsonValueString>(TEXT("Smith")) }); },
 		TEXT("crew.startRoles: unknown role 'Smith'"));
+	ExpectBalanceRejected(*this, TEXT("Refund above the cost"),
+		[](FJsonObject& Root) { Root.GetObjectField(TEXT("crew"))->SetNumberField(TEXT("dismissRefund"), 1.5); },
+		TEXT("crew.dismissRefund: must be at most 1"));
 	ExpectBalanceRejected(*this, TEXT("Work on a road"),
 		[](FJsonObject& Root) { Entry(Root, TEXT("works"), TEXT("Bridge"))->SetStringField(TEXT("on"), TEXT("Road")); },
 		TEXT("works.Bridge.on: 'Road' is not a tile type a job can open"));

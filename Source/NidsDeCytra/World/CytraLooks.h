@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Rules/CytraTileType.h"
 
 /** Placeholder appearance: an engine basic shape and a flat color. Sizes are in cells. */
 struct FCytraLook
@@ -22,6 +23,22 @@ struct FCytraTowerLook
 	bool bAims = false;
 };
 
+/** The isometric camera: an orthographic view at a fixed angle, zoom and panning. */
+struct FCytraCameraLook
+{
+	/** Tilt below the horizon and turn around the vertical, in degrees. True isometry seen from the south-west: -35.264 and 45. */
+	double Pitch = -35.264;
+	double Yaw = 45.0;
+	/** Space around the whole board, as a factor of its size on screen. */
+	double Margin = 1.05;
+	/** Closest zoom, as a factor of the whole board view. */
+	double MaxZoom = 3.0;
+	/** Zoom factor of one mouse wheel notch. */
+	double ZoomStep = 1.2;
+	/** Keyboard panning speed, in screen pixels per second. */
+	double PanSpeed = 900.0;
+};
+
 /** Appearance of game objects, read from Content/Data/Looks.json. Display only: the rules never read it. */
 struct NIDSDECYTRA_API FCytraLooks
 {
@@ -32,6 +49,10 @@ struct NIDSDECYTRA_API FCytraLooks
 	TMap<FName, FCytraLook> Workers;
 	/** By tower type. */
 	TMap<FName, FCytraTowerLook> Towers;
+	/** Optional in the file: defaults to true isometry. */
+	FCytraCameraLook Camera;
+	/** Height of the top of each tile type, in world units. Optional: the board keeps its own height for a type left out. */
+	TMap<ECytraTileType, float> TileHeights;
 
 	/** The look of a tower type, or the default look if the file has none. */
 	const FCytraTowerLook& TowerLook(FName Tower) const;

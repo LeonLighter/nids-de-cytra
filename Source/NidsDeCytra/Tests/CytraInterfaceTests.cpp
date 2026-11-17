@@ -191,6 +191,15 @@ bool FCytraMessagesOrdersTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Recruit refused"), Refused.Text.ToString(), FString(TEXT("Équipe complète (8)")));
 	TestTrue(TEXT("Recruit refused is a warning"), Refused.Tone == ECytraMessageTone::Warning);
 
+	FCytraDismissCheck Dismissed;
+	Dismissed.Role = TEXT("Carpenter");
+	Dismissed.Refund = 35;
+	TestEqual(TEXT("Dismissed"), FCytraMessages::FromDismiss(Dismissed).Text.ToString(), FString(TEXT("Nain charpentier renvoyé : +35 or")));
+	Dismissed.Refusal = ECytraDismissRefusal::GameOver;
+	const FCytraMessage DismissRefused = FCytraMessages::FromDismiss(Dismissed);
+	TestEqual(TEXT("Dismissal refused"), DismissRefused.Text.ToString(), FString(TEXT("La partie est terminée")));
+	TestTrue(TEXT("Dismissal refused is a warning"), DismissRefused.Tone == ECytraMessageTone::Warning);
+
 	FCytraLaunchResult Launch;
 	Launch.bLaunched = true;
 	TestFalse(TEXT("No message without a bonus"), FCytraMessages::FromLaunch(Launch).IsSet());

@@ -86,6 +86,31 @@ bool FCytraBoardBuildsPasse01Test::RunTest(const FString& Parameters)
 		const FVector Direction = FVector(0.0, 2.0, -1.0).GetSafeNormal();
 		TestEqual(TEXT("Slanted ray"), Board->CellUnderRay(Target - Direction * 3000.0, Direction), TOptional<FIntPoint>(Slot));
 
+		// Seen from the isometric camera, a ray aimed at the west face of a rock block picks that block, not the low cell in front of it.
+		const FVector IsoDirection = FRotator(-35.264, 45.0, 0.0).Vector();
+		const FCytraMapDef& Map = Board->GetMap();
+		const auto IsLow = [&Map, Board](const FIntPoint& Cell) { return Map.IsInside(Cell) && Board->GetTileHeight(Map.Get(Cell)) <= 24.0f; };
+		TOptional<FIntPoint> Wall;
+		for (int32 Y = 0; Y < Map.Rows && !Wall; ++Y)
+		{
+			for (int32 X = 0; X < Map.Cols && !Wall; ++X)
+			{
+				const FIntPoint Cell(X, Y);
+				if (Map.Get(Cell) == ECytraTileType::Rock && IsLow(Cell - FIntPoint(1, 0)) && IsLow(Cell + FIntPoint(-1, 1)) && IsLow(Cell + FIntPoint(0, 1)))
+				{
+					Wall = Cell;
+				}
+			}
+		}
+		if (TestTrue(TEXT("A rock block with low ground on its south-west sides"), Wall.IsSet()))
+		{
+			const FVector Face = Board->CellToWorld(*Wall) + FVector(0.0, -ACytraBoard::CellSize * 0.5, Board->GetTileHeight(ECytraTileType::Rock) * 0.5);
+			TestEqual(TEXT("Ray on the side of a block"), Board->CellUnderRay(Face - IsoDirection * 3000.0, IsoDirection), Wall);
+			const FVector InFront = Board->CellToWorld(*Wall - FIntPoint(1, 0)) + FVector(0.0, 0.0, Board->GetTileHeight(Map.Get(*Wall - FIntPoint(1, 0))));
+			TestEqual(TEXT("Ray on the low cell in front of it"), Board->CellUnderRay(InFront - IsoDirection * 3000.0, IsoDirection), TOptional<FIntPoint>(*Wall - FIntPoint(1, 0)));
+		}
+		TestFalse(TEXT("Ray beside the board"), Board->CellUnderRay(Board->CellToWorld(FIntPoint(-3, 3)) + FVector(0.0, 0.0, 5000.0), FVector(0.0, 0.0, -1.0)).IsSet());
+
 		// Slot rings follow the reachable area; opened accesses change look.
 		FCytraGrid Grid(Board->GetMap());
 		const TArray<FCytraJob> NoJobs;
