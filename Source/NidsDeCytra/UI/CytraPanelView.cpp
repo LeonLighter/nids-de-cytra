@@ -203,16 +203,66 @@ namespace
 			FText::Format(CytraText::Get(TEXT("Panel.DismantleExtra")), Percent(Balance.DismantleRefund)), &Refund);
 	}
 
-	/** An open mine: the miners there, the income, the gold extracted so far, and whether a place is free. */
-	void BuildOpenMine(FCytraPanelView& View, const FCytraMatch& Match, ECytraTileType Type)
+	/** Gold that may be fractional, such as a yield of 2.5, with at most two decimals. */
+	FText GoldAmount(double Value)
+	{
+		FNumberFormattingOptions Options;
+		Options.MinimumFractionalDigits = 0;
+		Options.MaximumFractionalDigits = 2;
+		return FText::AsNumber(Value, &Options);
+	}
+
+	/**
+	 * An open mine: the miners there, the income, the gold extracted so far, its vein and extraction level when the data
+	 * give it some, whether a place is free, and the orders to dig to the next vein and to improve extraction.
+	 */
+	void BuildOpenMine(FCytraPanelView& View, const FCytraMatch& Match, const FIntPoint& Cell, ECytraTileType Type)
 	{
 		const FCytraBalance& Balance = Match.GetBalance();
+		const FCytraMineState& Mine = *Match.GetGrid().GetMine(Cell);
 		const int32 Mining = Match.MinersMining();
 		const int32 Taken = Match.MinersAtMine();
 		View.Title = TileText(Type, TEXT("Title"));
 		View.TitleNote = FText::Format(CytraText::Get(TEXT("Panel.MineMiners")), Mining, Balance.MineSlots);
-		AddStat(View, TEXT("Panel.MineIncome"), FText::Format(CytraText::Get(TEXT("Panel.MineIncomeValue")), Mining * Balance.MineYield, FText::AsNumber(Balance.MinePeriod)));
+		AddStat(View, TEXT("Panel.MineIncome"), FText::Format(CytraText::Get(TEXT("Panel.MineIncomeValue")),
+			GoldAmount(Mining * Balance.MineYieldAt(Mine.Extraction)), FText::AsNumber(Balance.MinePeriod)));
 		AddStat(View, TEXT("Panel.MineMined"), FText::Format(CytraText::Get(TEXT("Panel.Cost")), Match.GetWallet().Mined));
+		if (Mine.Reserve.IsSet())
+		{
+			AddStat(View, TEXT("Panel.MineVein"), FText::AsNumber(Mine.Vein));
+			AddStat(View, TEXT("Panel.MineReserve"), Mine.IsExhausted() ? CytraText::Get(TEXT("Panel.MineReserveEmpty"))
+				: FText::Format(CytraText::Get(TEXT("Panel.Cost")), Mine.Reserve.GetValue()));
+		}
+		if (Balance.MineExtraction.bEnabled)
+		{
+			AddStat(View, TEXT("Panel.MineExtraction"), FText::Format(CytraText::Get(TEXT("Panel.MineExtractionValue")), Mine.Extraction));
+		}
+
+		if (const FCytraJob* Job = Match.FindJobAt(Cell))
+		{
+			AddJobState(View, Match, *Job, CytraText::Get(Job->Kind == ECytraOrderKind::DeepenMine ? TEXT("Panel.DeepenOrdered") : TEXT("Panel.ImproveOrdered")));
+		}
+		else if (Mine.IsExhausted())
+		{
+			AddLine(View, ECytraPanelLineStyle::Warning, CytraText::Get(TEXT("Panel.MineExhausted")));
+		}
+		if (!Match.FindJobAt(Cell))
+		{
+			if (const TOptional<int32> Next = Balance.VeinReserve(Mine.Vein + 1))
+			{
+				AddAction(View, Match, Cell, FCytraOrderAction::DeepenMine(), FText::Format(CytraText::Get(TEXT("Panel.Deepen")), Mine.Vein + 1),
+					FText::Format(CytraText::Get(TEXT("Panel.DeepenExtra")), Next.GetValue()));
+			}
+			if (Balance.MineExtraction.bEnabled)
+			{
+				AddAction(View, Match, Cell, FCytraOrderAction::ImproveMine(), FText::Format(CytraText::Get(TEXT("Panel.Improve")), Mine.Extraction + 1),
+					FText::Format(CytraText::Get(TEXT("Panel.ImproveExtra")), GoldAmount(Balance.MineYieldAt(Mine.Extraction + 1)), FText::AsNumber(Balance.MinePeriod)));
+			}
+		}
+		if (Mine.IsExhausted())
+		{
+			return;
+		}
 
 		const FText Places = Taken >= Balance.MineSlots ? FText::Format(CytraText::Get(TEXT("Panel.MineFull")), Balance.MineSlots)
 			: Taken > 0 ? CytraText::Get(TEXT("Panel.MinePlaceLeft"))
@@ -307,13 +357,17 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 	}
 	else if (Type == ECytraTileType::Mine && bOpened)
 	{
-		BuildOpenMine(View, Match, Type);
+		BuildOpenMine(View, Match, *Cell, Type);
 	}
 	else if (Type == ECytraTileType::Mine)
 	{
 		const FCytraBalance& Balance = Match.GetBalance();
 		View.Title = TileText(Type, TEXT("Title"));
 		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(TileText(Type, TEXT("Desc")), Balance.MineYield, FText::AsNumber(Balance.MinePeriod), Balance.MineSlots));
+		if (const TOptional<int32> Reserve = Balance.VeinReserve(1))
+		{
+			AddLine(View, ECytraPanelLineStyle::Text, FText::Format(CytraText::Get(TEXT("Panel.MineFirstVein")), Reserve.GetValue()));
+		}
 		AddWorks(View, Match, *Cell, Type);
 	}
 	else if (Type == ECytraTileType::Nest)
