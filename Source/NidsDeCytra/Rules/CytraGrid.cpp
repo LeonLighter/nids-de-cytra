@@ -23,7 +23,27 @@ void FCytraGrid::Open(const FIntPoint& Cell)
 {
 	check(Map.IsInside(Cell) && IsCytraOpenable(GetType(Cell)));
 	Opened[Index(Cell)] = true;
+	if (GetType(Cell) == ECytraTileType::Mine)
+	{
+		Mines.FindOrAdd(Cell);
+	}
 	ComputeReach();
+}
+
+const FCytraMineState* FCytraGrid::GetMine(const FIntPoint& Cell) const
+{
+	return Mines.Find(Cell);
+}
+
+FCytraMineState* FCytraGrid::FindMine(const FIntPoint& Cell)
+{
+	return Mines.Find(Cell);
+}
+
+bool FCytraGrid::IsWorkableMine(const FIntPoint& Cell) const
+{
+	const FCytraMineState* Mine = Mines.Find(Cell);
+	return Mine && !Mine->IsExhausted();
 }
 
 const FCytraTower* FCytraGrid::GetTower(const FIntPoint& Cell) const

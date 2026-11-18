@@ -47,6 +47,25 @@ TOptional<FCytraOrderSpec> FCytraOrders::Describe(const FCytraGrid& Grid, const 
 		}
 		return FCytraOrderSpec{ ECytraOrderKind::Dismantle, Tower->Type, Balance.Towers.FindChecked(Tower->Type).Role, 0, Balance.DismantleTime,
 			Balance.DismantleRefundOf(Tower->Invested) };
+	case ECytraOrderKind::DeepenMine:
+	{
+		// Allowed before the vein is exhausted: what is left adds to the next one.
+		const FCytraMineState* Mine = Grid.GetMine(Cell);
+		if (!Mine || !Balance.MineVein.bEnabled)
+		{
+			return {};
+		}
+		return FCytraOrderSpec{ ECytraOrderKind::DeepenMine, NAME_None, Balance.MineVein.Role, Balance.DeepenCost(Mine->Vein), Balance.MineVein.Time };
+	}
+	case ECytraOrderKind::ImproveMine:
+	{
+		const FCytraMineState* Mine = Grid.GetMine(Cell);
+		if (!Mine || !Balance.MineExtraction.bEnabled)
+		{
+			return {};
+		}
+		return FCytraOrderSpec{ ECytraOrderKind::ImproveMine, NAME_None, Balance.MineExtraction.Role, Balance.ExtractionCost(Mine->Extraction), Balance.MineExtraction.Time };
+	}
 	}
 	return {};
 }

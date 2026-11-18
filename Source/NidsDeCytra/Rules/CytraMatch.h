@@ -112,6 +112,8 @@ enum class ECytraMatchEventType : uint8
 	JobDone,
 	/** A miner extracted gold. */
 	MineYield,
+	/** The vein of the mine on Cell ran out: its miners leave it. */
+	MineExhausted,
 };
 
 struct FCytraMatchEvent
@@ -129,7 +131,10 @@ struct FCytraMatchEvent
 	FName Work;
 	FIntPoint Cell = FIntPoint::ZeroValue;
 	int32 OpenedSlots = 0;
-	/** JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling. */
+	/**
+	 * JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling.
+	 * JobDone on a mine: its new vein (with Gold, the reserve added) or its new extraction level.
+	 */
 	int32 Level = 0;
 	int32 Refund = 0;
 };
@@ -204,6 +209,8 @@ public:
 	int32 MinersAtMine() const;
 	/** Miners extracting gold now. */
 	int32 MinersMining() const;
+	/** The first opened mine with gold left, where idle miners go; null if none. */
+	const FIntPoint* FindWorkableMine() const;
 	double GetTime() const { return Time; }
 
 	const FCytraGrid& GetGrid() const { return Grid; }
@@ -240,6 +247,8 @@ private:
 	/** Shortest path from the cell a worker stands on. */
 	TOptional<TArray<FIntPoint>> PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const;
 	void Finish(int32 JobIndex, FCytraWorker& Worker);
+	/** A miner at the mine on Cell finished a period: pays the yield, within the reserve, and empties the mine once exhausted. */
+	void Extract(const FIntPoint& Cell);
 	FCytraJob* FindJob(int32 JobId);
 
 	FCytraMapDef Map;

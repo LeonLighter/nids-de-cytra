@@ -14,6 +14,21 @@ struct FCytraTower
 	int32 Invested = 0;
 };
 
+/** An opened mine: its vein, its extraction level and the gold left in it. */
+struct FCytraMineState
+{
+	/** 1 for the first vein. */
+	int32 Vein = 1;
+	/** 1 before any improvement. */
+	int32 Extraction = 1;
+	/** Gold left, unset for an endless mine. */
+	TOptional<int32> Reserve;
+	/** Fraction of gold extracted but not paid yet, when the yield is not a whole number. */
+	double Carry = 0.0;
+
+	bool IsExhausted() const { return Reserve.IsSet() && Reserve.GetValue() <= 0; }
+};
+
 /**
  * Live state of the map: opened tiles and towers, and the area workers can reach from the main camp.
  * Workers move between the 4 neighbouring cells; paths are shortest paths (breadth-first search).
@@ -39,6 +54,12 @@ public:
 	void UpgradeTower(const FIntPoint& Cell, int32 Cost);
 	/** Frees the slot and returns the tower that stood on it. */
 	FCytraTower RemoveTower(const FIntPoint& Cell);
+
+	/** State of the mine on Cell once opened, null otherwise. Opening a mine gives it an endless reserve. */
+	const FCytraMineState* GetMine(const FIntPoint& Cell) const;
+	FCytraMineState* FindMine(const FIntPoint& Cell);
+	/** An opened mine that is not exhausted. */
+	bool IsWorkableMine(const FIntPoint& Cell) const;
 
 	bool IsWalkable(const FIntPoint& Cell) const;
 	/** The main camp, or an outpost once raised. */
@@ -77,4 +98,5 @@ private:
 	TBitArray<> Opened;
 	TBitArray<> Reach;
 	TMap<FIntPoint, FCytraTower> Towers;
+	TMap<FIntPoint, FCytraMineState> Mines;
 };
