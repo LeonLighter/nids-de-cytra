@@ -72,7 +72,8 @@ namespace
 		{
 			FCytraRoleDef Def;
 			Def.Id = Id;
-			if (!Reader.Integer(TEXT("recruitCost"), Def.RecruitCost) || !CheckAtLeast(Reader, TEXT("recruitCost"), Def.RecruitCost, 0))
+			if (!Reader.Integer(TEXT("recruitCost"), Def.RecruitCost) || !CheckAtLeast(Reader, TEXT("recruitCost"), Def.RecruitCost, 0)
+				|| !Reader.OptionalInteger(TEXT("freeRecruits"), Def.FreeRecruits) || !CheckAtLeast(Reader, TEXT("freeRecruits"), Def.FreeRecruits, 0))
 			{
 				return false;
 			}

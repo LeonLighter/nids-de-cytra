@@ -227,6 +227,21 @@ bool FCytraHudForecastTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraHudLaunchLabelTest, "Cytra.UI.Hud.LaunchLabel", CytraTest::Flags)
+
+bool FCytraHudLaunchLabelTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Before wave 1"), FCytraHudView::LaunchLabel(false, 0, 1).ToString(), FString(TEXT("Lancer la vague 1")));
+	TestEqual(TEXT("Countdown with a bonus"), FCytraHudView::LaunchLabel(true, 18, 3).ToString(), FString(TEXT("Lancer maintenant (+18 or)")));
+	TestEqual(TEXT("Countdown without a bonus"), FCytraHudView::LaunchLabel(true, 0, 3).ToString(), FString(TEXT("Lancer la vague 3")));
+
+	// No message for a launch that pays nothing.
+	FCytraLaunchResult NoBonus;
+	NoBonus.bLaunched = true;
+	TestFalse(TEXT("No early launch message without a bonus"), FCytraMessages::FromLaunch(NoBonus).IsSet());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraEndScreenTest, "Cytra.UI.End.Screen", CytraTest::Flags)
 
 bool FCytraEndScreenTest::RunTest(const FString& Parameters)

@@ -20,10 +20,19 @@ namespace CytraTest
 	/** Absolute path of a file under Content/Data. */
 	FString DataPath(const TCHAR* Relative);
 
-	/** Loads the real map and balance files. Failures are reported on Test. */
+	/** Absolute path of the prototype balance, frozen under Source/NidsDeCytra/Tests/Reference. */
+	FString ReferenceBalancePath();
+
+	/**
+	 * Loads the real map and the prototype balance (ReferenceBalancePath), so the rules tests keep
+	 * checking the validated prototype while Content/Data/Balance.json is tuned. Failures are reported on Test.
+	 */
 	bool LoadMapAndBalance(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance);
 
-	/** Loads the real map, balance and wave files. Failures are reported on Test. */
+	/** Loads the real map and the live balance, Content/Data/Balance.json. Failures are reported on Test. */
+	bool LoadMapAndLiveBalance(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance);
+
+	/** Loads the real map and wave files with the prototype balance. Failures are reported on Test. */
 	bool LoadAll(FAutomationTestBase& Test, FCytraMapDef& OutMap, FCytraBalance& OutBalance, FCytraWaveSchedule& OutWaves);
 
 	/** Reads a data file as a JSON object, to build broken variants of it. */

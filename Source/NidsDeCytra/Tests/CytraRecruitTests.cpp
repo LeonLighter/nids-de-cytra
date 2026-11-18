@@ -217,6 +217,87 @@ bool FCytraCrewDismissAfterEndTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/** An empty starting crew whose first carpenter is free, as in the live balance. */
+TOptional<FCytraMatch> MakeFreeCarpenterMatch(FAutomationTestBase& Test)
+{
+	FCytraMapDef Map;
+	FCytraBalance Balance;
+	FCytraWaveSchedule Waves;
+	if (!CytraTest::LoadAll(Test, Map, Balance, Waves))
+	{
+		return {};
+	}
+	Balance.StartRoles.Reset();
+	Balance.Roles.FindChecked(Carpenter).FreeRecruits = 1;
+	return FCytraMatch(Map, Balance, Waves);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraRecruitFreeFirstTest, "Cytra.Rules.Recruit.FreeFirst", CytraTest::Flags)
+
+bool FCytraRecruitFreeFirstTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeFreeCarpenterMatch(*this);
+	if (!Match || !TestEqual(TEXT("Empty crew"), Match->GetWorkers().Num(), 0))
+	{
+		return false;
+	}
+
+	const FCytraRecruitCheck Check = Match->CheckRecruit(Carpenter);
+	TestTrue(TEXT("First carpenter free"), Check.IsAccepted() && Check.bFree);
+	TestEqual(TEXT("First carpenter cost"), Check.Cost, 0);
+	TestFalse(TEXT("Miner not free"), Match->CheckRecruit(Miner).bFree);
+
+	const FCytraRecruitCheck First = Match->Recruit(Carpenter);
+	TestTrue(TEXT("First carpenter recruited"), First.IsAccepted() && First.bFree);
+	TestEqual(TEXT("Nothing paid"), Match->GetWallet().Gold, 170);
+	TestEqual(TEXT("Nothing counted as spent"), Match->GetWallet().Spent, 0);
+
+	const FCytraRecruitCheck Second = Match->Recruit(Carpenter);
+	TestTrue(TEXT("Second carpenter paid"), Second.IsAccepted() && !Second.bFree);
+	TestEqual(TEXT("Second carpenter cost"), Second.Cost, 50);
+	TestEqual(TEXT("Gold after the second"), Match->GetWallet().Gold, 120);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraRecruitFreeDismissTest, "Cytra.Rules.Recruit.FreeDismissRefundsNothing", CytraTest::Flags)
+
+bool FCytraRecruitFreeDismissTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeFreeCarpenterMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+	const FCytraRecruitCheck Free = Match->Recruit(Carpenter);
+	const FCytraRecruitCheck Paid = Match->Recruit(Carpenter);
+	TestEqual(TEXT("Free recruit refund"), Match->CheckDismiss(Free.Worker).Refund, 0);
+	TestEqual(TEXT("Paid recruit refund"), Match->CheckDismiss(Paid.Worker).Refund, 35);
+
+	const FCytraDismissCheck Gone = Match->Dismiss(Free.Worker);
+	TestTrue(TEXT("Free recruit dismissed"), Gone.IsAccepted());
+	TestEqual(TEXT("No gold back"), Match->GetWallet().Gold, 120);
+	TestEqual(TEXT("No refund counted"), Match->GetWallet().Refunded, 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraRecruitFreeNotRestoredTest, "Cytra.Rules.Recruit.FreeNotRestored", CytraTest::Flags)
+
+bool FCytraRecruitFreeNotRestoredTest::RunTest(const FString& Parameters)
+{
+	TOptional<FCytraMatch> Match = MakeFreeCarpenterMatch(*this);
+	if (!Match)
+	{
+		return false;
+	}
+	const FCytraRecruitCheck Free = Match->Recruit(Carpenter);
+	Match->Dismiss(Free.Worker);
+
+	const FCytraRecruitCheck Again = Match->CheckRecruit(Carpenter);
+	TestFalse(TEXT("Dismissing does not give the free recruit back"), Again.bFree);
+	TestEqual(TEXT("Next carpenter cost"), Again.Cost, 50);
+	return true;
+}
+
 }
 
 #endif

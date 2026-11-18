@@ -345,13 +345,18 @@ FCytraPanelView FCytraPanelView::BuildCrew(const FCytraMatch& Match)
 		Entry.Tone = WorkerTone(Worker.State);
 		Entry.Dismiss = FText::Format(CytraText::Get(TEXT("Crew.Dismiss")), Match.CheckDismiss(Worker.Id).Refund);
 	}
+	if (View.Workers.IsEmpty())
+	{
+		FCytraPanelLine& Empty = View.Lines.AddDefaulted_GetRef();
+		Empty.Text = CytraText::Get(TEXT("Crew.Empty"));
+	}
 	for (const TPair<FName, FCytraRoleDef>& Role : Balance.Roles)
 	{
 		const FCytraRecruitCheck Check = Match.CheckRecruit(Role.Key);
 		FCytraPanelAction& Entry = View.Actions.AddDefaulted_GetRef();
 		Entry.Recruit = Role.Key;
 		Entry.Name = FText::Format(CytraText::Get(TEXT("Crew.Recruit")), RoleShort(Role.Key));
-		Entry.Cost = FText::Format(CytraText::Get(TEXT("Panel.Cost")), Role.Value.RecruitCost);
+		Entry.Cost = Check.bFree ? CytraText::Get(TEXT("Crew.Free")) : FText::Format(CytraText::Get(TEXT("Panel.Cost")), Check.Cost);
 		Entry.Meta = FText::Format(CytraText::Get(TEXT("Crew.Spec")), CytraText::Get(FString::Printf(TEXT("Role.%s.Spec"), *Role.Key.ToString())));
 		Entry.Refusal = RecruitRefusalText(Check);
 	}

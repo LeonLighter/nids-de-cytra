@@ -54,7 +54,7 @@ Lancer le jeu sans affichage, charger L_Passe01 et quitter (pour lire les lignes
 
 Pour vérifier à l'écran une fin de vague ou la victoire avant les tourelles, la commande console de développement `Cytra.KillAll` (absente des versions Shipping) abat tous les ennemis présents sur la carte, en versant leur or.
 
-Le test `Cytra.Rules.Match.FullGameVsPrototype` joue une partie scriptée (file d'ordres, lancements de vague à heure fixe) et compare toutes les 30 secondes l'or, les œufs, la vague, les ennemis abattus, l'or dépensé et extrait, les tourelles, l'équipe et les chantiers aux valeurs du prototype. Ces valeurs de référence ont été obtenues en faisant jouer la même partie à la logique du prototype dans Chrome sans affichage (`chrome --headless=new --dump-dom`). Un changement d'équilibrage dans `Balance.json` ou les vagues demande de les recalculer de la même façon.
+Le test `Cytra.Rules.Match.FullGameVsPrototype` joue une partie scriptée (file d'ordres, lancements de vague à heure fixe) et compare toutes les 30 secondes l'or, les œufs, la vague, les ennemis abattus, l'or dépensé et extrait, les tourelles, l'équipe et les chantiers aux valeurs du prototype. Ces valeurs de référence ont été obtenues en faisant jouer la même partie à la logique du prototype dans Chrome sans affichage (`chrome --headless=new --dump-dom`). Les tests de règles, ce test compris, chargent l'équilibrage du prototype figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json` (hors de `Content/`, donc non empaqueté) : régler `Content/Data/Balance.json` ne les touche pas, et `Cytra.Data.Balance.Live` vérifie les valeurs du jeu. Un changement du fichier de référence ou des vagues demande de recalculer les valeurs du prototype de la même façon. Une nouvelle règle doit garder, dans le fichier de référence, des réglages qui reproduisent le prototype.
 
 Bruit connu, sans rapport avec le projet : `LogPython: Error` venant de `ToolsetRegistry/.../init_unreal.py` (plugin expérimental du moteur), et `FindPlayerStart: ... NO PLAYERSTART` (le niveau n'a pas de PlayerStart, la caméra est placée par le GameMode).
 
@@ -96,7 +96,7 @@ Suite proposée :
 
 ## Hors périmètre tant que je ne le demande pas
 
-Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs, forgeron et améliorations d'équipe, autres cartes, sauvegarde, son, multijoueur, art final. Le GDD les liste en « Prévu pour la suite » : l'architecture ne doit pas les empêcher, mais on ne les code pas.
+Chasseurs (tours à pièges, tireurs d'élite), tours de soutien des ingénieurs, forgeron et améliorations d'équipe, autres cartes, sauvegarde (en dehors de l'Héritage et du tutoriel, J68), son, multijoueur, art final. Le GDD les liste en « Prévu pour la suite » : l'architecture ne doit pas les empêcher, mais on ne les code pas.
 
 ## Conventions
 
@@ -132,4 +132,12 @@ Les numéros vont de 10 en 10 et chaque phase a sa centaine : phase 1 (reproduir
 - **J50 · Mine et recrutement.** Mine d'or, recrutement.
 - **J60 · Interface complète.** Panneau d'équipe, messages, pause, vitesse, écran de fin. Partie entière comparée au prototype.
 - **J65 · Vue isométrique.** Caméra orthographique en isométrie vraie depuis le sud-ouest, toute la carte visible, zoom à la molette, déplacement ZQSD ou WASD une fois zoomé, clic sur le premier bloc touché, réglages de caméra et hauteurs des cases dans `Looks.json`. En complément, après le prototype : « Construire un pont » au lieu de « Jeter un pont », renvoi d'un ouvrier contre 70 % de son coût de recrutement.
-- **J66 · Préparation d'un playtest.** Changements éventuels à apporter avant de faire jouer des joueurs, à définir.
+- **J66 · Rythme et départ.** Équipe vide au départ (ni mineur ni charpentier), premier charpentier recruté gratuit, vague 1 lancée par le joueur sans compte à rebours, 60 s fixes de préparation entre deux vagues, suppression du bonus de lancement anticipé. Le test `FullGameVsPrototype` reste branché sur l'équilibrage d'origine, figé à part.
+- **J67 · Mine à filons.** Ouverture de la mine plus chère que l'or de départ, réserve d'or limitée par filon, ordre payant pour atteindre le filon suivant (niveau de mine, sans maximum : coût, réserve et rendement croissent de façon exponentielle selon des facteurs en données), réserve affichée, mineurs qui ne descendent plus dans une mine épuisée.
+- **J68 · Menu et modes de jeu.** Menu Jouer / Quitter et choix du mode en Slate par-dessus L_Passe01, modes décrits en données (`Content/Data/Modes/`), mode Classique, option d'URL `CytraMode`, bouton Menu à la pause et à l'écran de fin.
+- **J69 · Sauvegarde.** Fichier JSON dans `Saved/SaveGames/`, logique de lecture et d'écriture pure et testée, numéro de version, écriture sûre, réinitialisation depuis le menu. Sert à l'Héritage et au tutoriel, à rien d'autre.
+- **J70 · Foreur et roche tendre.** Nouvelle case de roche tendre, nouvelle spécialité (foreur) qui y creuse des galeries gratuitement sans pouvoir déblayer, emplacements de tourelle cachés dans la roche, carte mise à jour. Les routes des ennemis ne changent pas.
+- **J71 · Ouvriers vulnérables.** Points de vie des ouvriers, dégâts au contact d'un ennemi selon son type, 3 s d'invulnérabilité après un coup, aucun dégât pendant un chantier, une amélioration, un déblayage ou un forage, conséquence à 0 PV.
+- **J72 · Héritage.** Mode incrémental : éclats extraits des filons et gagnés aux vagues, conservés d'une partie à l'autre, arbre d'améliorations permanentes entre deux parties (filons plus riches et plus profonds, équipe, défense), paliers de difficulté après une victoire.
+- **J73 · Tutoriel.** Mode Tutoriel guidé en chapitres, qui couvre aussi le foreur et les dégâts aux ouvriers, décrit en données (`Content/Data/Tutorial.json`), logique pure `FCytraTutorial`, repères sur la carte et sur les boutons, passable à tout moment.
+- **J74 · Version de playtest.** Build empaquetée à distribuer, vérification des données et de la sauvegarde hors éditeur, consignes pour les joueurs.

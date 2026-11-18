@@ -32,6 +32,8 @@ struct FCytraWorker
 {
 	int32 Id = 0;
 	FName Role;
+	/** Gold paid to recruit it, the base of its dismissal refund. */
+	int32 PaidCost = 0;
 	FVector2d Position = FVector2d::ZeroVector;
 	/** Cells still to walk, the next one first. */
 	TArray<FIntPoint> Path;
@@ -84,6 +86,8 @@ struct FCytraRecruitCheck
 {
 	ECytraRecruitRefusal Refusal = ECytraRecruitRefusal::None;
 	int32 Cost = 0;
+	/** One of the free recruits of the specialty: Cost is 0. */
+	bool bFree = false;
 	int32 MissingGold = 0;
 	/** Crew size limit, for the refusal message. */
 	int32 MaxCrew = 0;

@@ -231,7 +231,7 @@ private:
 	/** Hits an enemy. At 0 hit points it dies and pays its gold. Dead enemies are ignored. */
 	void Hit(FCytraEnemy& Enemy, double Damage);
 
-	void AddWorker(FName Role);
+	void AddWorker(FName Role, int32 PaidCost);
 	void StepWorkers(double Dt);
 	/** Gives waiting jobs a worker, sends idle miners to the mine and everyone else back to the nearest camp. */
 	void Manage();
@@ -251,6 +251,8 @@ private:
 
 	FCytraGrid Grid;
 	TArray<FCytraWorker> Workers;
+	/** Free recruits already used, by specialty. Dismissing one does not give it back. */
+	TMap<FName, int32> FreeRecruitsUsed;
 	TArray<FCytraJob> Jobs;
 	TArray<FCytraTowerGun> Towers;
 	TArray<FCytraShot> Shots;

@@ -104,6 +104,8 @@ namespace CytraText
 		TEXT("Crew.Spec"),
 		TEXT("Crew.Dismiss"),
 		TEXT("Crew.DismissConfirm"),
+		TEXT("Crew.Free"),
+		TEXT("Crew.Empty"),
 		TEXT("Refusal.CrewFull"),
 		TEXT("Panel.MineState"),
 		TEXT("Panel.MineStateComing"),

@@ -91,19 +91,19 @@ La galerie `(5,5)`–`(5,8)` relie les deux routes à l'ouest pour les ouvriers,
 
 ## 4. Ouvriers
 
-Départ : 1 nain charpentier et 1 nain mineur, au camp principal. Équipe de 8 au maximum. Vitesse : 3,2 cases par seconde. Les ennemis ignorent les ouvriers, et inversement.
+Départ : aucun ouvrier, le joueur recrute lui-même son équipe (`startRoles` vide dans `Balance.json` ; le prototype démarrait avec 1 nain charpentier et 1 nain mineur). Le premier charpentier recruté dans la partie est gratuit (`freeRecruits: 1` sur la spécialité). Équipe de 8 au maximum. Vitesse : 3,2 cases par seconde. Les ennemis ignorent les ouvriers, et inversement.
 
 Les spécialités sont **strictes** : un ordre ne peut être exécuté que par un ouvrier de la bonne spécialité.
 
 | Spécialité | Recrutement | Actions |
 | --- | --- | --- |
 | Nain mineur | 40 or | Déblayer un éboulis, ouvrir la mine, exploiter la mine |
-| Nain charpentier | 50 or | Pont, échelle, avant-poste, baliste, mortier, démonter une baliste ou un mortier |
+| Nain charpentier | 50 or (le premier : gratuit) | Pont, échelle, avant-poste, baliste, mortier, démonter une baliste ou un mortier |
 | Gnome ingénieur | 60 or | Bobine gnome, améliorer une tourelle, démonter une bobine |
 
 Les recrues arrivent toujours au camp principal.
 
-Un ouvrier peut être renvoyé à tout moment de la partie, ouvriers de départ compris, contre 70 % du coût de recrutement de sa spécialité, arrondi à l'entier inférieur (28, 35 ou 42 or ; taux `dismissRefund` dans `Balance.json`). Un ouvrier occupé peut aussi être renvoyé : son chantier garde son avancement et revient au plus proche ouvrier libre de la spécialité, ou attend une recrue. Le renvoi est refusé une fois la partie terminée. Cette règle s'ajoute au prototype.
+Un ouvrier peut être renvoyé à tout moment de la partie contre 70 % de ce qu'il a coûté à recruter, arrondi à l'entier inférieur (28, 35 ou 42 or ; taux `dismissRefund` dans `Balance.json`). Une recrue gratuite ne rend donc rien, et la renvoyer ne redonne pas droit à une autre recrue gratuite. Un ouvrier de départ (le prototype en avait deux) compte comme payé au coût de sa spécialité. Un ouvrier occupé peut aussi être renvoyé : son chantier garde son avancement et revient au plus proche ouvrier libre de la spécialité, ou attend une recrue. Le renvoi est refusé une fois la partie terminée. Cette règle s'ajoute au prototype.
 
 ### États d'un ouvrier
 
@@ -238,40 +238,42 @@ Chaque groupe fait apparaître `nombre` ennemis sur sa route, le premier après 
 
 ### Déroulé
 
-- **Avant la vague 1** : pas de compte à rebours. Les ouvriers travaillent déjà. Le joueur lance la vague quand il veut.
+- **Avant la vague 1** : pas de compte à rebours. Le joueur recrute son équipe, donne ses ordres et lance la vague quand il veut.
 - **Pendant une vague** : elle se termine quand tous ses ennemis sont apparus et qu'il n'en reste aucun en vie.
 - **Fin de vague** `n` : prime de `25 + 6 × n` or, puis phase de préparation.
-- **Préparation** : un compte à rebours lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt et gagne 1 or par seconde entière restante.
+- **Préparation** : un compte à rebours de 60 s lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt, sans bonus : il gagne seulement du temps. (Le prototype donnait 1 or par seconde entière restante ; ce taux, `earlyLaunchGoldPerSecond`, vaut désormais 0.)
 - Les ordres sont possibles à tout moment : préparation, vague, pause.
 
 ### Menace et temps de préparation
 
-Le temps de préparation dépend de la difficulté de la vague qui arrive.
+Le niveau de menace dépend de la difficulté de la vague qui arrive. La formule du temps de préparation est gardée, mais ses réglages la rendent fixe : `prepBase` 60 et `prepScale` 0 donnent 60 s avant chaque vague de 2 à 10.
 
 - `menace(vague) = somme, sur ses groupes, de nombre × points de vie de base × (1 + 0,2 × (n − 1))`
 - `ratio = menace / plus forte menace de la partie`
-- `préparation = arrondi(20 + 20 × racine(ratio))` secondes
+- `préparation = arrondi(prepBase + prepScale × racine(ratio))` secondes, soit 60 s
 - `niveau affiché = max(1, plafond(5 × racine(ratio)))`, de 1 à 5
 
 | Vague à venir | Menace | Niveau | Préparation | Prime de fin de vague |
 | --- | --- | --- | --- | --- |
 | 1 | 240 | 1 | lancée par le joueur | 31 or |
-| 2 | 324 | 2 | 24 s | 37 or |
-| 3 | 588 | 2 | 26 s | 43 or |
-| 4 | 624 | 2 | 26 s | 49 or |
-| 5 | 1044 | 2 | 28 s | 55 or |
-| 6 | 1264 | 3 | 28 s | 61 or |
-| 7 | 1993 | 3 | 31 s | 67 or |
-| 8 | 2755 | 4 | 32 s | 73 or |
-| 9 | 3744 | 4 | 34 s | 79 or |
-| 10 | 7174 | 5 | 40 s | 85 or |
+| 2 | 324 | 2 | 60 s | 37 or |
+| 3 | 588 | 2 | 60 s | 43 or |
+| 4 | 624 | 2 | 60 s | 49 or |
+| 5 | 1044 | 2 | 60 s | 55 or |
+| 6 | 1264 | 3 | 60 s | 61 or |
+| 7 | 1993 | 3 | 60 s | 67 or |
+| 8 | 2755 | 4 | 60 s | 73 or |
+| 9 | 3744 | 4 | 60 s | 79 or |
+| 10 | 7174 | 5 | 60 s | 85 or |
+
+Le prototype utilisait `20 + 20 × racine(ratio)`, soit 24, 26, 26, 28, 28, 31, 32, 34 et 40 s avant les vagues 2 à 10 (voir la section 13).
 
 L'interface annonce la vague suivante : son niveau de menace et, par route, le nombre d'ennemis de chaque type.
 
 ## 9. Économie
 
 - Départ : 170 or.
-- Entrées : or des ennemis tués, prime de fin de vague, bonus de lancement anticipé, mine, démontage.
+- Entrées : or des ennemis tués, prime de fin de vague, mine, démontage, renvoi d'un ouvrier. (Le prototype avait aussi un bonus de lancement anticipé, réglé à 0.)
 - Sorties : recrutement, chantiers, tourelles, améliorations.
 
 ### Mine d'or
@@ -298,8 +300,8 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 - **Clic sur une case** : la sélectionne. Un panneau affiche ce qu'elle est et les ordres possibles, avec pour chacun le coût, la spécialité requise, la durée du chantier et, s'il est refusé, la raison.
 - **Emplacement sélectionné** : la portée de la tourelle (ou de la tourelle envisagée) est dessinée sur la carte.
-- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » (qui affiche le bonus d'or en préparation).
-- **Équipe** : liste des ouvriers avec spécialité et état, trois boutons de recrutement avec leur coût.
+- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » (qui n'affiche un bonus d'or que si `earlyLaunchGoldPerSecond` est positif).
+- **Équipe** : liste des ouvriers avec spécialité et état (ou une ligne qui invite à recruter tant que l'équipe est vide), trois boutons de recrutement avec leur coût (« Gratuit » pour une recrue gratuite).
 - **Temps** : pause, vitesse ×1, ×2, ×3, recommencer (avec confirmation).
 - **Sur la carte** : barre de progression au-dessus de chaque chantier, signalée différemment tant qu'aucun ouvrier n'y est affecté ; barre de vie sur les ennemis blessés ; marque distincte pour les emplacements accessibles, inaccessibles et les promontoires ; indication des routes que prendra la vague suivante.
 - **Messages brefs** : ordre accepté ou refusé, chantier terminé, accès ouvert (avec le nombre d'emplacements gagnés), œuf perdu, vague repoussée.
@@ -314,7 +316,7 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 ## 13. Cas de test de référence
 
-Ces résultats viennent du prototype. Les tests du jalon 1 doivent les retrouver.
+Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
 
 1. Au départ, exactement 5 emplacements sont accessibles : `(3,2)`, `(11,4)`, `(2,12)`, `(10,10)`, `(19,6)`.
 2. Chaque route mesure 27 cases.
