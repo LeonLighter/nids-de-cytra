@@ -380,7 +380,7 @@ void UCytraHudWidget::Refresh()
 		Next = State->bHasCountdown
 			? FText::Format(CytraText::Get(TEXT("Hud.NextIn")), State->Wave + 1, State->CountdownSeconds)
 			: FText::Format(CytraText::Get(TEXT("Hud.Next")), State->Wave + 1);
-		Launch = FCytraHudView::LaunchLabel(State->bHasCountdown, State->EarlyLaunchBonus, State->Wave + 1);
+		Launch = FCytraHudView::LaunchLabel(State->bHasCountdown, State->EarlyLaunchBonus, State->EarlyLaunchMineGold, State->Wave + 1);
 		bCanLaunch = true;
 		break;
 	case ECytraMatchPhase::Wave:

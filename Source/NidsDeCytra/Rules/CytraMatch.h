@@ -112,6 +112,8 @@ enum class ECytraMatchEventType : uint8
 	JobDone,
 	/** A miner extracted gold. */
 	MineYield,
+	/** The vein of the mine on Cell ran out: its miners leave it. */
+	MineExhausted,
 };
 
 struct FCytraMatchEvent
@@ -129,7 +131,10 @@ struct FCytraMatchEvent
 	FName Work;
 	FIntPoint Cell = FIntPoint::ZeroValue;
 	int32 OpenedSlots = 0;
-	/** JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling. */
+	/**
+	 * JobDone on a tower: its level once built or upgraded, the gold given back by a dismantling.
+	 * JobDone on a mine: its new vein (with Gold, the reserve added) or its new extraction level.
+	 */
 	int32 Level = 0;
 	int32 Refund = 0;
 };
@@ -139,6 +144,8 @@ struct FCytraLaunchResult
 	bool bLaunched = false;
 	/** Early launch bonus paid. */
 	int32 Bonus = 0;
+	/** Gold the miners at the mine would have extracted during the countdown skipped, paid at once. */
+	int32 MineGold = 0;
 };
 
 /**
@@ -153,7 +160,10 @@ public:
 	/** Advances the match by Dt seconds. The game uses fixed steps of 1/60 s. Does nothing once the match is over. */
 	void Step(double Dt);
 
-	/** Launches the next wave now, paying the early launch bonus if a countdown was running. Refused outside preparation. */
+	/**
+	 * Launches the next wave now. If a countdown was running, pays the early launch bonus and, when the balance says so,
+	 * the gold the miners at the mine would have extracted until its end. Refused outside preparation.
+	 */
 	FCytraLaunchResult LaunchWave();
 
 	/** Hits an enemy. At 0 hit points it dies and pays its gold. Unknown or dead enemies are ignored. */
@@ -204,6 +214,13 @@ public:
 	int32 MinersAtMine() const;
 	/** Miners extracting gold now. */
 	int32 MinersMining() const;
+	/**
+	 * Gold that launching the next wave now would pay from the mine, as LaunchWave computes it: 0 without a countdown
+	 * or when the data leave it out.
+	 */
+	int32 MineGoldAhead() const;
+	/** The first opened mine with gold left, where idle miners go; null if none. */
+	const FIntPoint* FindWorkableMine() const;
 	double GetTime() const { return Time; }
 
 	const FCytraGrid& GetGrid() const { return Grid; }
@@ -240,6 +257,13 @@ private:
 	/** Shortest path from the cell a worker stands on. */
 	TOptional<TArray<FIntPoint>> PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const;
 	void Finish(int32 JobIndex, FCytraWorker& Worker);
+	/**
+	 * A miner at the mine on Cell finished a period: pays the yield, within the reserve, and empties the mine once exhausted.
+	 * bShow false leaves out the yield event and the gold shown on the map.
+	 */
+	void Extract(const FIntPoint& Cell, bool bShow = true);
+	/** Runs the miners at the mine Seconds ahead, as Step would, and returns the gold extracted. */
+	int32 ExtractAhead(double Seconds);
 	FCytraJob* FindJob(int32 JobId);
 
 	FCytraMapDef Map;

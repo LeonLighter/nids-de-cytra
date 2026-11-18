@@ -41,10 +41,16 @@ TOptional<FCytraMessage> FCytraMessages::FromEvent(const FCytraMatchEvent& Event
 			return Good(FText::Format(CytraText::Get(TEXT("Message.TowerUpgraded")), CytraText::Data(TEXT("Tower"), Event.Work, TEXT("Name")), Event.Level));
 		case ECytraOrderKind::Dismantle:
 			return Good(FText::Format(CytraText::Get(TEXT("Message.Dismantled")), CytraText::Data(TEXT("Tower"), Event.Work, TEXT("Name")), Event.Refund));
+		case ECytraOrderKind::DeepenMine:
+			return Good(FText::Format(CytraText::Get(TEXT("Message.VeinReached")), Event.Level, Event.Gold));
+		case ECytraOrderKind::ImproveMine:
+			return Good(FText::Format(CytraText::Get(TEXT("Message.ExtractionImproved")), Event.Level));
 		}
 		break;
 	case ECytraMatchEventType::MineYield:
 		break;
+	case ECytraMatchEventType::MineExhausted:
+		return Warning(CytraText::Get(TEXT("Message.MineExhausted")));
 	}
 	return {};
 }
@@ -70,6 +76,12 @@ FCytraMessage FCytraMessages::FromOrder(const FCytraOrderResult& Result)
 		break;
 	case ECytraOrderKind::Dismantle:
 		Text = FText::Format(CytraText::Get(TEXT("Message.DismantleOrdered")), Spec.Refund);
+		break;
+	case ECytraOrderKind::DeepenMine:
+		Text = FText::Format(CytraText::Get(TEXT("Message.Ordered")), CytraText::Get(TEXT("Message.Deepen")), Spec.Cost);
+		break;
+	case ECytraOrderKind::ImproveMine:
+		Text = FText::Format(CytraText::Get(TEXT("Message.Ordered")), CytraText::Get(TEXT("Message.Improve")), Spec.Cost);
 		break;
 	}
 	if (Result.bWaiting)
@@ -104,9 +116,21 @@ FCytraMessage FCytraMessages::FromDismiss(const FCytraDismissCheck& Check)
 
 TOptional<FCytraMessage> FCytraMessages::FromLaunch(const FCytraLaunchResult& Result)
 {
-	if (!Result.bLaunched || Result.Bonus <= 0)
+	if (!Result.bLaunched)
 	{
 		return {};
 	}
-	return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunch")), Result.Bonus));
+	if (Result.Bonus > 0 && Result.MineGold > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunchBoth")), Result.Bonus, Result.MineGold));
+	}
+	if (Result.Bonus > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunch")), Result.Bonus));
+	}
+	if (Result.MineGold > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunchMine")), Result.MineGold));
+	}
+	return {};
 }

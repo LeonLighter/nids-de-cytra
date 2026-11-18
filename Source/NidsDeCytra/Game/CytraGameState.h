@@ -54,6 +54,10 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
 	int32 EarlyLaunchBonus = 0;
 
+	/** Gold the mine pays at once if the next wave is launched now. */
+	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
+	int32 EarlyLaunchMineGold = 0;
+
 	/** Enemies of the current wave still alive or still to spawn. */
 	UPROPERTY(VisibleInstanceOnly, Category = "Cytra")
 	int32 EnemiesLeft = 0;

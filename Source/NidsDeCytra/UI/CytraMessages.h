@@ -37,6 +37,6 @@ struct NIDSDECYTRA_API FCytraMessages
 	/** The worker gone and the gold paid back, or why the dismissal is refused. */
 	static FCytraMessage FromDismiss(const FCytraDismissCheck& Check);
 
-	/** The early launch bonus. Unset when there is none. */
+	/** The early launch bonus and the gold of the mine paid for the time skipped. Unset when there is neither. */
 	static TOptional<FCytraMessage> FromLaunch(const FCytraLaunchResult& Result);
 };

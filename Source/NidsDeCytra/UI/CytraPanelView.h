@@ -106,4 +106,10 @@ struct NIDSDECYTRA_API FCytraPanelView
 
 	/** Equal for equal contents: the panel redraws only when it changes. */
 	FString Signature() const;
+
+	/**
+	 * Signature without the stat values and the refusals of the actions, which change with the gold every second the
+	 * mine pays: the panel is rebuilt only when this changes, and those texts are updated in place.
+	 */
+	FString ShapeSignature() const;
 };

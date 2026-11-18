@@ -39,3 +39,41 @@ int32 FCytraBalance::EarlyLaunchBonus(double Countdown) const
 {
 	return static_cast<int32>(FMath::FloorToDouble(FMath::Max(Countdown, 0.0))) * EarlyLaunchGoldPerSecond;
 }
+
+namespace
+{
+	/** Base x Factor^(Level-1), rounded, kept below the int32 limit since levels have no maximum. */
+	int32 Grow(int32 Base, double Factor, int32 Level)
+	{
+		const double Value = Base * FMath::Pow(Factor, static_cast<double>(FMath::Max(Level, 1) - 1));
+		return Value >= static_cast<double>(MAX_int32) ? MAX_int32 : CytraMath::Round(Value);
+	}
+}
+
+TOptional<int32> FCytraBalance::VeinReserve(int32 Vein) const
+{
+	if (!MineVein.bEnabled)
+	{
+		return {};
+	}
+	return Grow(MineVein.Reserve, MineVein.ReserveFactor, Vein);
+}
+
+int32 FCytraBalance::DeepenCost(int32 CurrentVein) const
+{
+	return Grow(MineVein.Cost, MineVein.CostFactor, CurrentVein);
+}
+
+int32 FCytraBalance::ExtractionCost(int32 CurrentLevel) const
+{
+	return Grow(MineExtraction.Cost, MineExtraction.CostFactor, CurrentLevel);
+}
+
+double FCytraBalance::MineYieldAt(int32 Level) const
+{
+	if (!MineExtraction.bEnabled)
+	{
+		return MineYield;
+	}
+	return MineYield * FMath::Pow(MineExtraction.YieldFactor, static_cast<double>(FMath::Max(Level, 1) - 1));
+}

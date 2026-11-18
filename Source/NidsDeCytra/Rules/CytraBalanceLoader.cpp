@@ -236,6 +236,47 @@ namespace
 			&& Dismantle.Number(TEXT("refund"), Balance.DismantleRefund) && CheckAtLeast(Dismantle, TEXT("refund"), Balance.DismantleRefund, 0);
 	}
 
+	/** Optional "vein" and "extraction" sections of "mine". Without them the mine is endless and its yield fixed, as in the prototype. */
+	bool ParseMineLevels(const FReader& Mine, FCytraBalance& Balance, FString& Error)
+	{
+		TSharedPtr<FJsonObject> VeinObject;
+		TSharedPtr<FJsonObject> ExtractionObject;
+		if (!Mine.OptionalObject(TEXT("vein"), VeinObject) || !Mine.OptionalObject(TEXT("extraction"), ExtractionObject))
+		{
+			return false;
+		}
+		if (VeinObject)
+		{
+			const FReader Vein(*VeinObject, Mine.FieldPath(TEXT("vein")), Error);
+			FCytraMineVeinDef& Def = Balance.MineVein;
+			Def.bEnabled = true;
+			if (!Vein.Name(TEXT("role"), Def.Role) || !CheckRole(Balance, Vein, TEXT("role"), Def.Role)
+				|| !Vein.Integer(TEXT("reserve"), Def.Reserve) || !CheckAtLeast(Vein, TEXT("reserve"), Def.Reserve, 1)
+				|| !Vein.Number(TEXT("reserveFactor"), Def.ReserveFactor) || !CheckPositive(Vein, TEXT("reserveFactor"), Def.ReserveFactor)
+				|| !Vein.Integer(TEXT("cost"), Def.Cost) || !CheckAtLeast(Vein, TEXT("cost"), Def.Cost, 0)
+				|| !Vein.Number(TEXT("costFactor"), Def.CostFactor) || !CheckPositive(Vein, TEXT("costFactor"), Def.CostFactor)
+				|| !Vein.Number(TEXT("time"), Def.Time) || !CheckPositive(Vein, TEXT("time"), Def.Time))
+			{
+				return false;
+			}
+		}
+		if (ExtractionObject)
+		{
+			const FReader Extraction(*ExtractionObject, Mine.FieldPath(TEXT("extraction")), Error);
+			FCytraMineExtractionDef& Def = Balance.MineExtraction;
+			Def.bEnabled = true;
+			if (!Extraction.Name(TEXT("role"), Def.Role) || !CheckRole(Balance, Extraction, TEXT("role"), Def.Role)
+				|| !Extraction.Integer(TEXT("cost"), Def.Cost) || !CheckAtLeast(Extraction, TEXT("cost"), Def.Cost, 0)
+				|| !Extraction.Number(TEXT("costFactor"), Def.CostFactor) || !CheckPositive(Extraction, TEXT("costFactor"), Def.CostFactor)
+				|| !Extraction.Number(TEXT("time"), Def.Time) || !CheckPositive(Extraction, TEXT("time"), Def.Time)
+				|| !Extraction.Number(TEXT("yieldFactor"), Def.YieldFactor) || !CheckPositive(Extraction, TEXT("yieldFactor"), Def.YieldFactor))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ParseMineWavesTargeting(const FReader& Root, FCytraBalance& Balance, FString& Error)
 	{
 		TSharedPtr<FJsonObject> MineObject;
@@ -253,6 +294,7 @@ namespace
 		return Mine.Integer(TEXT("slots"), Balance.MineSlots) && CheckAtLeast(Mine, TEXT("slots"), Balance.MineSlots, 0)
 			&& Mine.Number(TEXT("period"), Balance.MinePeriod) && CheckPositive(Mine, TEXT("period"), Balance.MinePeriod)
 			&& Mine.Integer(TEXT("yield"), Balance.MineYield) && CheckAtLeast(Mine, TEXT("yield"), Balance.MineYield, 0)
+			&& ParseMineLevels(Mine, Balance, Error)
 			&& Waves.Number(TEXT("hpScalePerWave"), Balance.HpScalePerWave)
 			&& Waves.Integer(TEXT("endBonusBase"), Balance.EndBonusBase)
 			&& Waves.Integer(TEXT("endBonusPerWave"), Balance.EndBonusPerWave)
@@ -260,6 +302,7 @@ namespace
 			&& Waves.Number(TEXT("prepScale"), Balance.PrepScale)
 			&& Waves.Integer(TEXT("threatLevels"), Balance.ThreatLevels) && CheckAtLeast(Waves, TEXT("threatLevels"), Balance.ThreatLevels, 1)
 			&& Waves.Integer(TEXT("earlyLaunchGoldPerSecond"), Balance.EarlyLaunchGoldPerSecond)
+			&& Waves.OptionalBool(TEXT("earlyLaunchMine"), Balance.bEarlyLaunchMine)
 			&& Targeting.Number(TEXT("minX"), Balance.TargetingMinX);
 	}
 }

@@ -206,9 +206,9 @@ void ACytraGameMode::LaunchWave()
 		return;
 	}
 	const FCytraLaunchResult Result = Match->LaunchWave();
-	if (Result.bLaunched && Result.Bonus > 0)
+	if (Result.bLaunched && (Result.Bonus > 0 || Result.MineGold > 0))
 	{
-		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold"), Result.Bonus);
+		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold, +%d gold from the mine"), Result.Bonus, Result.MineGold);
 	}
 	if (const TOptional<FCytraMessage> Message = FCytraMessages::FromLaunch(Result))
 	{
@@ -639,11 +639,20 @@ void ACytraGameMode::LogEvents()
 			case ECytraOrderKind::Dismantle:
 				UE_LOG(LogCytra, Log, TEXT("Match: %s at (%d,%d) dismantled, %d gold back"), *Event.Work.ToString(), Event.Cell.X, Event.Cell.Y, Event.Refund);
 				break;
+			case ECytraOrderKind::DeepenMine:
+				UE_LOG(LogCytra, Log, TEXT("Match: mine at (%d,%d) down to vein %d, +%d gold in reserve"), Event.Cell.X, Event.Cell.Y, Event.Level, Event.Gold);
+				break;
+			case ECytraOrderKind::ImproveMine:
+				UE_LOG(LogCytra, Log, TEXT("Match: mine at (%d,%d) at extraction level %d"), Event.Cell.X, Event.Cell.Y, Event.Level);
+				break;
 			}
 			bGridChanged = true;
 			break;
 		case ECytraMatchEventType::MineYield:
 			UE_LOG(LogCytra, Verbose, TEXT("Match: +%d gold from the mine, %d in total"), Event.Gold, Match->GetWallet().Mined);
+			break;
+		case ECytraMatchEventType::MineExhausted:
+			UE_LOG(LogCytra, Log, TEXT("Match: mine at (%d,%d) exhausted, %d gold mined in total"), Event.Cell.X, Event.Cell.Y, Match->GetWallet().Mined);
 			break;
 		}
 	}

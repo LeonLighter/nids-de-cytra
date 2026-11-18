@@ -40,6 +40,25 @@ private:
 	TFunction<void(bool)> HoverCallback;
 };
 
+/** Texts of a card that change without its shape: updated in place rather than rebuilt, in the order of the view. */
+USTRUCT()
+struct FCytraLiveTexts
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> StatValues;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCytraPanelButton>> Buttons;
+
+	/** Refusal under each button, collapsed while the order is possible. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> Refusals;
+
+	void Reset();
+};
+
 /**
  * Column on the right of the screen, in two cards. The order card shows what the selected cell is and the orders it takes,
  * with their cost, specialty, duration and, when refused, the reason. The crew card below has the recruitment buttons.
@@ -63,10 +82,12 @@ private:
 	/** A card with its background in Column. Returns the box its content goes in. */
 	UVerticalBox* AddCard(UVerticalBox* Column, const TCHAR* Name);
 	/** Replaces the content of a card. */
-	void ShowCard(UVerticalBox* Box, const FCytraPanelView& View);
-	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View);
+	void ShowCard(UVerticalBox* Box, const FCytraPanelView& View, FCytraLiveTexts& Live);
+	/** Puts the stat values and the refusals of View in a card of the same shape, without rebuilding it. */
+	void UpdateCard(const FCytraLiveTexts& Live, const FCytraPanelView& View);
+	void AddTitle(UVerticalBox* Box, const FCytraPanelView& View, FCytraLiveTexts& Live);
 	void AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, int32 StepNumber);
-	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action);
+	void AddAction(UVerticalBox* Box, const FCytraPanelAction& Action, FCytraLiveTexts& Live);
 	/** A worker of the crew list: a dot of its color, its name, its state and its dismiss button. */
 	void AddWorker(UVerticalBox* Box, const FCytraPanelWorker& Worker, bool bLast);
 	/** A first click on a dismiss button asks for a confirmation, a second one within 3 seconds dismisses. */
@@ -90,6 +111,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> CrewButtons;
+
+	UPROPERTY(Transient)
+	FCytraLiveTexts ContentLive;
+
+	UPROPERTY(Transient)
+	FCytraLiveTexts CrewListLive;
+
+	UPROPERTY(Transient)
+	FCytraLiveTexts CrewButtonsLive;
 
 	/** State of each worker of the crew list, in its order: updated in place, so that the dismiss buttons stay under the cursor. */
 	UPROPERTY(Transient)

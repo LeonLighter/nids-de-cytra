@@ -88,6 +88,9 @@ bool FCytraDataLoadsBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Upgrade role"), Balance.Upgrade.Role, FName(TEXT("Engineer")));
 	TestEqual(TEXT("Max level"), Balance.Upgrade.MaxLevel, 3);
 	TestEqual(TEXT("Mine slots"), Balance.MineSlots, 2);
+	TestFalse(TEXT("Prototype mine without veins"), Balance.MineVein.bEnabled);
+	TestFalse(TEXT("Prototype early launch without mine gold"), Balance.bEarlyLaunchMine);
+	TestFalse(TEXT("Prototype mine without extraction levels"), Balance.MineExtraction.bEnabled);
 	TestEqual(TEXT("Targeting min x"), Balance.TargetingMinX, -0.4);
 	return true;
 }
@@ -113,6 +116,14 @@ bool FCytraDataLiveBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("First carpenter free"), Balance.Roles.FindChecked(TEXT("Carpenter")).FreeRecruits, 1);
 	TestEqual(TEXT("No free miner"), Balance.Roles.FindChecked(TEXT("Miner")).FreeRecruits, 0);
 	TestEqual(TEXT("No early launch bonus"), Balance.EarlyLaunchBonus(45.0), 0);
+	TestEqual(TEXT("Mine opening"), Balance.Works.FindChecked(TEXT("OpenMine")).Cost, 150);
+	TestEqual(TEXT("Mine period"), Balance.MinePeriod, 1.0);
+	TestEqual(TEXT("Mine yield, 1 gold a second"), Balance.MineYield, 1);
+	TestTrue(TEXT("Early launch pays the mine"), Balance.bEarlyLaunchMine);
+	TestTrue(TEXT("Mine with veins"), Balance.MineVein.bEnabled);
+	TestEqual(TEXT("Veins dug by miners"), Balance.MineVein.Role, FName(TEXT("Miner")));
+	TestTrue(TEXT("Mine with extraction levels"), Balance.MineExtraction.bEnabled);
+	TestEqual(TEXT("Extraction improved by miners"), Balance.MineExtraction.Role, FName(TEXT("Miner")));
 	const FCytraMatch Match(Map, Balance, Waves);
 	TestFalse(TEXT("No countdown before wave 1"), Match.GetCountdown().IsSet());
 	TestEqual(TEXT("Nobody at the start"), Match.GetWorkers().Num(), 0);
@@ -180,6 +191,18 @@ bool FCytraDataRejectsBadBalanceTest::RunTest(const FString& Parameters)
 	ExpectBalanceRejected(*this, TEXT("Fractional hit points"),
 		[](FJsonObject& Root) { Entry(Root, TEXT("enemies"), TEXT("Bandit"))->SetNumberField(TEXT("hp"), 30.5); },
 		TEXT("enemies.Bandit.hp: must be an integer"));
+	ExpectBalanceRejected(*this, TEXT("Empty first vein"),
+		[](FJsonObject& Root) { Root.GetObjectField(TEXT("mine"))->GetObjectField(TEXT("vein"))->SetNumberField(TEXT("reserve"), 0); },
+		TEXT("mine.vein.reserve: must be at least 1"));
+	ExpectBalanceRejected(*this, TEXT("Vein without time"),
+		[](FJsonObject& Root) { Root.GetObjectField(TEXT("mine"))->GetObjectField(TEXT("vein"))->RemoveField(TEXT("time")); },
+		TEXT("mine.vein.time: missing number"));
+	ExpectBalanceRejected(*this, TEXT("Extraction by an unknown role"),
+		[](FJsonObject& Root) { Root.GetObjectField(TEXT("mine"))->GetObjectField(TEXT("extraction"))->SetStringField(TEXT("role"), TEXT("Smith")); },
+		TEXT("mine.extraction.role: unknown role 'Smith'"));
+	ExpectBalanceRejected(*this, TEXT("Zero yield factor"),
+		[](FJsonObject& Root) { Root.GetObjectField(TEXT("mine"))->GetObjectField(TEXT("extraction"))->SetNumberField(TEXT("yieldFactor"), 0.0); },
+		TEXT("mine.extraction.yieldFactor: must be positive"));
 	ExpectBalanceRejected(*this, TEXT("Zero speed"),
 		[](FJsonObject& Root) { Entry(Root, TEXT("enemies"), TEXT("Soldier"))->SetNumberField(TEXT("speed"), 0.0); },
 		TEXT("enemies.Soldier.speed: must be positive"));

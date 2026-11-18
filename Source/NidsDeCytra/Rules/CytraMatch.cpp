@@ -137,6 +137,10 @@ FCytraLaunchResult FCytraMatch::StartWave(bool bAuto)
 	{
 		Result.Bonus = Balance.EarlyLaunchBonus(Countdown.GetValue());
 		Wallet.Earn(Result.Bonus);
+		if (Balance.bEarlyLaunchMine)
+		{
+			Result.MineGold = ExtractAhead(FMath::Max(Countdown.GetValue(), 0.0));
+		}
 	}
 	SpawnQueue = Waves.SpawnQueue(Wave);
 	++Wave;
@@ -516,6 +520,53 @@ int32 FCytraMatch::MinersMining() const
 	return Workers.FilterByPredicate([](const FCytraWorker& Worker) { return Worker.State == ECytraWorkerState::Mining; }).Num();
 }
 
+int32 FCytraMatch::MineGoldAhead() const
+{
+	const FIntPoint* Cell = FindWorkableMine();
+	if (!Balance.bEarlyLaunchMine || Phase != ECytraMatchPhase::Prep || !Countdown.IsSet() || !Cell)
+	{
+		return 0;
+	}
+	// The same steps as ExtractAhead and Extract, on copies of the miners' time and of the mine.
+	const double Seconds = FMath::Max(Countdown.GetValue(), 0.0);
+	const FCytraMineState& Mine = *Grid.GetMine(*Cell);
+	const double Yield = Balance.MineYieldAt(Mine.Extraction);
+	double Carry = Mine.Carry;
+	TOptional<int32> Reserve = Mine.Reserve;
+	int32 Total = 0;
+	for (const FCytraWorker& Worker : Workers)
+	{
+		if (Worker.State != ECytraWorkerState::Mining)
+		{
+			continue;
+		}
+		double MineTime = Worker.MineTime + Seconds;
+		while (MineTime >= Balance.MinePeriod)
+		{
+			if (Reserve.IsSet() && Reserve.GetValue() <= 0)
+			{
+				return Total;
+			}
+			MineTime -= Balance.MinePeriod;
+			Carry += Yield;
+			int32 Gold = FMath::FloorToInt32(Carry + 1e-9);
+			Carry = FMath::Max(0.0, Carry - Gold);
+			if (Reserve.IsSet())
+			{
+				Gold = FMath::Min(Gold, Reserve.GetValue());
+				Reserve = Reserve.GetValue() - Gold;
+			}
+			Total += Gold;
+		}
+	}
+	return Total;
+}
+
+const FIntPoint* FCytraMatch::FindWorkableMine() const
+{
+	return Map.Mines.FindByPredicate([this](const FIntPoint& Mine) { return Grid.IsWorkableMine(Mine); });
+}
+
 TOptional<TArray<FIntPoint>> FCytraMatch::PathFrom(const FCytraWorker& Worker, TFunctionRef<bool(const FIntPoint&)> Goal) const
 {
 	return Grid.FindPath(RoundToCell(Worker.Position), Goal);
@@ -574,8 +625,8 @@ void FCytraMatch::Manage()
 		}
 	}
 
-	// 2. Without a job, a miner goes down an open mine with a free place; anyone else not on a camp walks to the nearest one.
-	const FIntPoint* OpenMine = Map.Mines.FindByPredicate([this](const FIntPoint& Mine) { return Grid.IsOpened(Mine); });
+	// 2. Without a job, a miner goes down an open mine with gold left and a free place; anyone else not on a camp walks to the nearest one.
+	const FIntPoint* OpenMine = FindWorkableMine();
 	for (FCytraWorker& Worker : Workers)
 	{
 		if (Worker.State != ECytraWorkerState::Idle && Worker.State != ECytraWorkerState::Back)
@@ -649,18 +700,80 @@ void FCytraMatch::StepWorkers(double Dt)
 			if (Worker.MineTime >= Balance.MinePeriod)
 			{
 				Worker.MineTime -= Balance.MinePeriod;
-				Wallet.EarnFromMine(Balance.MineYield);
-				FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
-				Event.Type = ECytraMatchEventType::MineYield;
-				Event.Gold = Balance.MineYield;
-				if (const FIntPoint* Mine = Map.Mines.FindByPredicate([this](const FIntPoint& Cell) { return Grid.IsOpened(Cell); }))
+				if (const FIntPoint* Mine = FindWorkableMine())
 				{
-					Event.Cell = *Mine;
+					Extract(*Mine);
 				}
-				FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
-				Effect.Kind = ECytraEffectKind::MineGold;
-				Effect.To = FVector2d(Event.Cell.X, Event.Cell.Y);
-				Effect.Gold = Event.Gold;
+			}
+		}
+	}
+}
+
+int32 FCytraMatch::ExtractAhead(double Seconds)
+{
+	// Miners on their way to the mine do not count. The time skipped is spent: each miner's period goes on from there.
+	const int32 Before = Wallet.Mined;
+	for (FCytraWorker& Worker : Workers)
+	{
+		if (Worker.State != ECytraWorkerState::Mining)
+		{
+			continue;
+		}
+		Worker.MineTime += Seconds;
+		while (Worker.State == ECytraWorkerState::Mining && Worker.MineTime >= Balance.MinePeriod)
+		{
+			Worker.MineTime -= Balance.MinePeriod;
+			const FIntPoint* Mine = FindWorkableMine();
+			if (!Mine)
+			{
+				break;
+			}
+			Extract(*Mine, false);
+		}
+	}
+	return Wallet.Mined - Before;
+}
+
+void FCytraMatch::Extract(const FIntPoint& Cell, bool bShow)
+{
+	FCytraMineState& Mine = *Grid.FindMine(Cell);
+	Mine.Carry += Balance.MineYieldAt(Mine.Extraction);
+	// The margin keeps 2.5 + 2.5 from paying 4.
+	int32 Gold = FMath::FloorToInt32(Mine.Carry + 1e-9);
+	Mine.Carry = FMath::Max(0.0, Mine.Carry - Gold);
+	if (Mine.Reserve.IsSet())
+	{
+		Gold = FMath::Min(Gold, Mine.Reserve.GetValue());
+		Mine.Reserve = Mine.Reserve.GetValue() - Gold;
+	}
+
+	Wallet.EarnFromMine(Gold);
+	if (Gold > 0 && bShow)
+	{
+		FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
+		Event.Type = ECytraMatchEventType::MineYield;
+		Event.Gold = Gold;
+		Event.Cell = Cell;
+		FCytraEffect& Effect = Effects.AddDefaulted_GetRef();
+		Effect.Kind = ECytraEffectKind::MineGold;
+		Effect.To = FVector2d(Cell.X, Cell.Y);
+		Effect.Gold = Gold;
+	}
+
+	if (Mine.IsExhausted())
+	{
+		Mine.Carry = 0.0;
+		FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
+		Event.Type = ECytraMatchEventType::MineExhausted;
+		Event.Cell = Cell;
+		// Everyone at the mine or on the way leaves it; Manage sends them back to a camp.
+		for (FCytraWorker& Worker : Workers)
+		{
+			if (Worker.State == ECytraWorkerState::Mining || Worker.State == ECytraWorkerState::ToMine)
+			{
+				Worker.State = ECytraWorkerState::Idle;
+				Worker.Path.Reset();
+				Worker.MineTime = 0.0;
 			}
 		}
 	}
@@ -686,6 +799,31 @@ void FCytraMatch::Finish(int32 JobIndex, FCytraWorker& Worker)
 		const int32 Before = Grid.ReachableSlotCount();
 		Grid.Open(Job.Cell);
 		Event.OpenedSlots = Grid.ReachableSlotCount() - Before;
+		if (FCytraMineState* Mine = Grid.FindMine(Job.Cell))
+		{
+			Mine->Reserve = Balance.VeinReserve(Mine->Vein);
+		}
+		break;
+	}
+	case ECytraOrderKind::DeepenMine:
+	{
+		// The gold left in the vein adds to the next one.
+		FCytraMineState& Mine = *Grid.FindMine(Job.Cell);
+		++Mine.Vein;
+		Event.Level = Mine.Vein;
+		if (const TOptional<int32> Added = Balance.VeinReserve(Mine.Vein))
+		{
+			const int64 Total = static_cast<int64>(Mine.Reserve.Get(0)) + Added.GetValue();
+			Mine.Reserve = static_cast<int32>(FMath::Min<int64>(Total, MAX_int32));
+			Event.Gold = Added.GetValue();
+		}
+		break;
+	}
+	case ECytraOrderKind::ImproveMine:
+	{
+		FCytraMineState& Mine = *Grid.FindMine(Job.Cell);
+		++Mine.Extraction;
+		Event.Level = Mine.Extraction;
 		break;
 	}
 	case ECytraOrderKind::Build:

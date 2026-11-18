@@ -14,9 +14,13 @@ enum class ECytraOrderKind : uint8
 	Build,
 	Upgrade,
 	Dismantle,
+	/** Digs an opened mine down to its next vein, which adds that vein's reserve. */
+	DeepenMine,
+	/** Raises the extraction level of an opened mine. */
+	ImproveMine,
 };
 
-/** What the player asks for on a cell. Id names the work or the tower type; it is unused for upgrades and dismantling. */
+/** What the player asks for on a cell. Id names the work or the tower type; it is unused for the other orders. */
 struct FCytraOrderAction
 {
 	ECytraOrderKind Kind = ECytraOrderKind::Work;
@@ -26,6 +30,8 @@ struct FCytraOrderAction
 	static FCytraOrderAction Build(FName TowerType) { return { ECytraOrderKind::Build, TowerType }; }
 	static FCytraOrderAction Upgrade() { return { ECytraOrderKind::Upgrade, NAME_None }; }
 	static FCytraOrderAction Dismantle() { return { ECytraOrderKind::Dismantle, NAME_None }; }
+	static FCytraOrderAction DeepenMine() { return { ECytraOrderKind::DeepenMine, NAME_None }; }
+	static FCytraOrderAction ImproveMine() { return { ECytraOrderKind::ImproveMine, NAME_None }; }
 };
 
 /** The job an order would create. */

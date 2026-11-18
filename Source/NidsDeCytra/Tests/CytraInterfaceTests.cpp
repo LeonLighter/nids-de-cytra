@@ -206,6 +206,12 @@ bool FCytraMessagesOrdersTest::RunTest(const FString& Parameters)
 	Launch.Bonus = 18;
 	const TOptional<FCytraMessage> Early = FCytraMessages::FromLaunch(Launch);
 	TestEqual(TEXT("Early launch"), Early ? Early->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +18 or")));
+	Launch.MineGold = 12;
+	const TOptional<FCytraMessage> Both = FCytraMessages::FromLaunch(Launch);
+	TestEqual(TEXT("Early launch with the mine"), Both ? Both->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +18 or, +12 or de la mine")));
+	Launch.Bonus = 0;
+	const TOptional<FCytraMessage> MineOnly = FCytraMessages::FromLaunch(Launch);
+	TestEqual(TEXT("Early launch, mine only"), MineOnly ? MineOnly->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +12 or de la mine")));
 	return true;
 }
 
@@ -231,9 +237,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraHudLaunchLabelTest, "Cytra.UI.Hud.LaunchL
 
 bool FCytraHudLaunchLabelTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("Before wave 1"), FCytraHudView::LaunchLabel(false, 0, 1).ToString(), FString(TEXT("Lancer la vague 1")));
-	TestEqual(TEXT("Countdown with a bonus"), FCytraHudView::LaunchLabel(true, 18, 3).ToString(), FString(TEXT("Lancer maintenant (+18 or)")));
-	TestEqual(TEXT("Countdown without a bonus"), FCytraHudView::LaunchLabel(true, 0, 3).ToString(), FString(TEXT("Lancer la vague 3")));
+	TestEqual(TEXT("Before wave 1"), FCytraHudView::LaunchLabel(false, 0, 0, 1).ToString(), FString(TEXT("Lancer la vague 1")));
+	TestEqual(TEXT("Countdown with a bonus"), FCytraHudView::LaunchLabel(true, 18, 0, 3).ToString(), FString(TEXT("Lancer maintenant (+18 or)")));
+	TestEqual(TEXT("Countdown without a bonus"), FCytraHudView::LaunchLabel(true, 0, 0, 3).ToString(), FString(TEXT("Lancer la vague 3")));
+	TestEqual(TEXT("Countdown with mine gold"), FCytraHudView::LaunchLabel(true, 0, 42, 3).ToString(), FString(TEXT("Lancer maintenant (+42 or de la mine)")));
+	TestEqual(TEXT("Countdown with both"), FCytraHudView::LaunchLabel(true, 18, 42, 3).ToString(), FString(TEXT("Lancer maintenant (+18 or, +42 or de la mine)")));
+	TestEqual(TEXT("Mine gold without a countdown"), FCytraHudView::LaunchLabel(false, 0, 42, 1).ToString(), FString(TEXT("Lancer la vague 1")));
 
 	// No message for a launch that pays nothing.
 	FCytraLaunchResult NoBonus;

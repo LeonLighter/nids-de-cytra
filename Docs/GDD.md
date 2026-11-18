@@ -97,7 +97,7 @@ Les spécialités sont **strictes** : un ordre ne peut être exécuté que par u
 
 | Spécialité | Recrutement | Actions |
 | --- | --- | --- |
-| Nain mineur | 40 or | Déblayer un éboulis, ouvrir la mine, exploiter la mine |
+| Nain mineur | 40 or | Déblayer un éboulis, ouvrir la mine, exploiter la mine, creuser jusqu'au filon suivant, améliorer l'extraction |
 | Nain charpentier | 50 or (le premier : gratuit) | Pont, échelle, avant-poste, baliste, mortier, démonter une baliste ou un mortier |
 | Gnome ingénieur | 60 or | Bobine gnome, améliorer une tourelle, démonter une bobine |
 
@@ -119,7 +119,7 @@ Un ouvrier peut être renvoyé à tout moment de la partie contre 70 % de ce qu'
 ### Affectation, à chaque pas de simulation
 
 1. Les chantiers sans ouvrier sont traités dans l'ordre de commande. Chacun prend l'ouvrier disponible de la bonne spécialité dont le trajet est le plus court. Un mineur à la mine ou en chemin vers elle n'est choisi que si aucun autre mineur n'est disponible.
-2. Un mineur sans chantier descend à la mine si elle est ouverte et qu'il y reste une place.
+2. Un mineur sans chantier descend à la mine si elle est ouverte, que son filon n'est pas épuisé et qu'il y reste une place.
 3. Tout autre ouvrier sans chantier, s'il n'est pas déjà sur un camp, rentre immédiatement au camp le plus proche en longueur de trajet (camp principal ou avant-poste monté).
 
 Un ouvrier interrompu entre deux cases rejoint d'abord le centre de sa case avant de repartir.
@@ -135,7 +135,9 @@ Règles communes : l'or est débité à la commande ; un seul chantier par case 
 | Déblayer l'éboulis | Éboulis | Mineur | 30 or | 6 s |
 | Construire un pont | Gouffre | Charpentier | 60 or | 9 s |
 | Poser une échelle | Falaise | Charpentier | 45 or | 6 s |
-| Ouvrir la mine | Mine fermée | Mineur | 50 or | 8 s |
+| Ouvrir la mine | Mine fermée | Mineur | 150 or (prototype : 50) | 8 s |
+| Creuser jusqu'au filon suivant | Mine ouverte | Mineur | Voir section 9 | 10 s |
+| Améliorer l'extraction | Mine ouverte | Mineur | Voir section 9 | 8 s |
 | Monter l'avant-poste | Site d'avant-poste | Charpentier | 70 or | 10 s |
 | Construire une tourelle | Emplacement libre et accessible | Selon la tourelle | Selon la tourelle | Selon la tourelle |
 | Améliorer | Tourelle de niveau 1 ou 2 | Ingénieur | Voir section 6 | 5 s |
@@ -241,7 +243,7 @@ Chaque groupe fait apparaître `nombre` ennemis sur sa route, le premier après 
 - **Avant la vague 1** : pas de compte à rebours. Le joueur recrute son équipe, donne ses ordres et lance la vague quand il veut.
 - **Pendant une vague** : elle se termine quand tous ses ennemis sont apparus et qu'il n'en reste aucun en vie.
 - **Fin de vague** `n` : prime de `25 + 6 × n` or, puis phase de préparation.
-- **Préparation** : un compte à rebours de 60 s lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt, sans bonus : il gagne seulement du temps. (Le prototype donnait 1 or par seconde entière restante ; ce taux, `earlyLaunchGoldPerSecond`, vaut désormais 0.)
+- **Préparation** : un compte à rebours de 60 s lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt, sans bonus fixe (le prototype donnait 1 or par seconde entière restante ; ce taux, `earlyLaunchGoldPerSecond`, vaut désormais 0). En revanche, il touche aussitôt l'or que les mineurs **à la mine** auraient extrait jusqu'à la fin du compte à rebours : chaque période complète qu'ils auraient finie, au rendement de leur niveau d'extraction, dans la limite de la réserve du filon, qui est consommée (le filon peut s'épuiser ainsi). Les mineurs en chemin vers la mine ne comptent pas. Le temps sauté est imputé : la période en cours de chaque mineur reprend d'autant. Cet or compte dans l'or extrait. La vague 1, sans compte à rebours, ne verse rien. Réglage `earlyLaunchMine` de la section `waves`, absent du prototype.
 - Les ordres sont possibles à tout moment : préparation, vague, pause.
 
 ### Menace et temps de préparation
@@ -278,9 +280,23 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 
 ### Mine d'or
 
-- Fermée au départ. L'ordre « Ouvrir la mine » (mineur, 50 or, 8 s) la rend exploitable.
-- 2 places. Chaque mineur sur place rapporte 2 or toutes les 6 secondes. La mine est sans fin.
+- Fermée au départ. L'ordre « Ouvrir la mine » (mineur, 150 or, 8 s) la rend exploitable. Son coût dépasse l'or de départ moins un mineur (170 − 40) : on ne peut pas recruter un mineur et ouvrir la mine d'emblée.
+- 2 places. Chaque mineur sur place rapporte 1 or par seconde au niveau d'extraction 1 (prototype : 2 or toutes les 6 secondes).
 - Les mineurs y vont d'eux-mêmes quand ils n'ont pas de chantier. Un déblayage commandé rappelle un mineur de la mine si aucun autre n'est libre.
+- **Filons.** La mine s'ouvre sur le filon 1, qui contient une réserve d'or limitée. Chaque extraction est prise dans la réserve ; la dernière ne verse que ce qui reste. Une fois la réserve vide, le filon est épuisé : les mineurs à la mine ou en chemin la quittent et rentrent au camp, et aucun n'y redescend.
+- **Creuser jusqu'au filon suivant** (mineur, 10 s) fait passer la mine au filon n + 1 et ajoute sa réserve à ce qui reste : l'ordre est possible avant l'épuisement. Il n'y a pas de filon maximal.
+- **Améliorer l'extraction** (mineur, 8 s) augmente le rendement de chaque mineur, indépendamment du filon. Pas de niveau maximal. Un rendement fractionnaire est cumulé : à 1,25 or par seconde, un mineur verse 1, 1, 1, puis 2…
+- Valeurs, toutes dans `Balance.json` (section `mine`, sous-sections `vein` et `extraction`), arrondies à l'entier le plus proche, une valeur au niveau n valant base × facteur^(n − 1) :
+
+| Grandeur | Base | Facteur | Niveaux 1 ; 2 ; 3 |
+| --- | --- | --- | --- |
+| Réserve du filon n | 150 or | 1,6 | 150 ; 240 ; 384 |
+| Coût pour creuser du filon n au suivant | 120 or | 1,7 | 120 ; 204 ; 347 |
+| Rendement par mineur au niveau d'extraction n | 1 or / s | 1,25 | 1 ; 1,25 ; 1,5625 |
+| Coût pour améliorer l'extraction du niveau n au suivant | 75 or | 1,7 | 75 ; 128 ; 217 |
+
+- Sans sous-section `vein`, la mine est sans fin ; sans sous-section `extraction`, le rendement est fixe : c'est le cas du prototype, et de l'équilibrage de référence des tests.
+- Le panneau de la mine ouverte affiche le revenu, l'or extrait, le filon, la réserve restante (« épuisée » une fois vide), le niveau d'extraction et les deux ordres.
 - Les mineurs se tiennent sur la galerie `(14,10)`.
 
 ### Avant-poste
@@ -300,11 +316,11 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 - **Clic sur une case** : la sélectionne. Un panneau affiche ce qu'elle est et les ordres possibles, avec pour chacun le coût, la spécialité requise, la durée du chantier et, s'il est refusé, la raison.
 - **Emplacement sélectionné** : la portée de la tourelle (ou de la tourelle envisagée) est dessinée sur la carte.
-- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » (qui n'affiche un bonus d'or que si `earlyLaunchGoldPerSecond` est positif).
+- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » : pendant le compte à rebours, il annonce l'or que le lancement verserait tout de suite, bonus (si `earlyLaunchGoldPerSecond` est positif) et or de la mine, par exemple « Lancer maintenant (+42 or de la mine) » ; sinon il nomme la vague à lancer.
 - **Équipe** : liste des ouvriers avec spécialité et état (ou une ligne qui invite à recruter tant que l'équipe est vide), trois boutons de recrutement avec leur coût (« Gratuit » pour une recrue gratuite).
 - **Temps** : pause, vitesse ×1, ×2, ×3, recommencer (avec confirmation).
 - **Sur la carte** : barre de progression au-dessus de chaque chantier, signalée différemment tant qu'aucun ouvrier n'y est affecté ; barre de vie sur les ennemis blessés ; marque distincte pour les emplacements accessibles, inaccessibles et les promontoires ; indication des routes que prendra la vague suivante.
-- **Messages brefs** : ordre accepté ou refusé, chantier terminé, accès ouvert (avec le nombre d'emplacements gagnés), œuf perdu, vague repoussée.
+- **Messages brefs** : ordre accepté ou refusé, chantier terminé, accès ouvert (avec le nombre d'emplacements gagnés), œuf perdu, vague repoussée, filon atteint, extraction améliorée, filon épuisé.
 
 ## 12. Prévu pour la suite (ne pas coder maintenant)
 
@@ -316,7 +332,7 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 ## 13. Cas de test de référence
 
-Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
+Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement) et J67 (ouverture de la mine à 150 or, rendement de 1 or par seconde, filons à réserve limitée, niveaux d'extraction, or de la mine versé au lancement anticipé). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
 
 1. Au départ, exactement 5 emplacements sont accessibles : `(3,2)`, `(11,4)`, `(2,12)`, `(10,10)`, `(19,6)`.
 2. Chaque route mesure 27 cases.

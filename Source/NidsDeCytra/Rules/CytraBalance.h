@@ -77,6 +77,36 @@ struct FCytraUpgradeDef
 	int32 CostRounding = 1;
 };
 
+/**
+ * Veins of the mine: each holds a limited reserve of gold, and a job digs down to the next one.
+ * Values of vein n (1-based) grow as Base x Factor^(n-1). Absent from the data, the mine is endless, as in the prototype.
+ */
+struct FCytraMineVeinDef
+{
+	bool bEnabled = false;
+	/** Digs to the next vein. */
+	FName Role;
+	/** Gold in the first vein. */
+	int32 Reserve = 0;
+	double ReserveFactor = 1.0;
+	/** Price to dig from vein 1 to vein 2. */
+	int32 Cost = 0;
+	double CostFactor = 1.0;
+	double Time = 0.0;
+};
+
+/** Extraction level of the mine, raised by a job of its own: gold per miner and period grows as Yield x YieldFactor^(level-1). */
+struct FCytraMineExtractionDef
+{
+	bool bEnabled = false;
+	FName Role;
+	/** Price to raise extraction from level 1 to level 2. */
+	int32 Cost = 0;
+	double CostFactor = 1.0;
+	double Time = 0.0;
+	double YieldFactor = 1.0;
+};
+
 struct FCytraTowerStats
 {
 	double Range = 0.0;
@@ -110,7 +140,10 @@ struct NIDSDECYTRA_API FCytraBalance
 
 	int32 MineSlots = 0;
 	double MinePeriod = 0.0;
+	/** Gold per miner and period at extraction level 1. */
 	int32 MineYield = 0;
+	FCytraMineVeinDef MineVein;
+	FCytraMineExtractionDef MineExtraction;
 
 	double HpScalePerWave = 0.0;
 	int32 EndBonusBase = 0;
@@ -119,6 +152,8 @@ struct NIDSDECYTRA_API FCytraBalance
 	double PrepScale = 0.0;
 	int32 ThreatLevels = 1;
 	int32 EarlyLaunchGoldPerSecond = 0;
+	/** Launching a wave before its countdown ends pays at once what the miners at the mine would have extracted meanwhile. */
+	bool bEarlyLaunchMine = false;
 
 	/** Enemies left of this x (still off the map) cannot be targeted. */
 	double TargetingMinX = 0.0;
@@ -140,4 +175,16 @@ struct NIDSDECYTRA_API FCytraBalance
 
 	/** Gold earned for launching the next wave with Countdown seconds left. */
 	int32 EarlyLaunchBonus(double Countdown) const;
+
+	/** Gold in vein Vein (1-based), unset for an endless mine. */
+	TOptional<int32> VeinReserve(int32 Vein) const;
+
+	/** Price to dig from vein CurrentVein to the next. */
+	int32 DeepenCost(int32 CurrentVein) const;
+
+	/** Price to raise extraction from CurrentLevel to the next. */
+	int32 ExtractionCost(int32 CurrentLevel) const;
+
+	/** Gold per miner and period at extraction level Level (1-based), possibly fractional. */
+	double MineYieldAt(int32 Level) const;
 };
