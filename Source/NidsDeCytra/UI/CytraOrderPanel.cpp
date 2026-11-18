@@ -106,10 +106,18 @@ UVerticalBox* UCytraOrderPanel::AddCard(UVerticalBox* Column, const TCHAR* Name)
 	return Box;
 }
 
-void UCytraOrderPanel::ShowCard(UVerticalBox* Box, const FCytraPanelView& View)
+void FCytraLiveTexts::Reset()
+{
+	StatValues.Reset();
+	Buttons.Reset();
+	Refusals.Reset();
+}
+
+void UCytraOrderPanel::ShowCard(UVerticalBox* Box, const FCytraPanelView& View, FCytraLiveTexts& Live)
 {
 	Box->ClearChildren();
-	AddTitle(Box, View);
+	Live.Reset();
+	AddTitle(Box, View, Live);
 	int32 StepNumber = 0;
 	for (const FCytraPanelLine& Line : View.Lines)
 	{
@@ -122,7 +130,22 @@ void UCytraOrderPanel::ShowCard(UVerticalBox* Box, const FCytraPanelView& View)
 	}
 	for (const FCytraPanelAction& Action : View.Actions)
 	{
-		AddAction(Box, Action);
+		AddAction(Box, Action, Live);
+	}
+}
+
+void UCytraOrderPanel::UpdateCard(const FCytraLiveTexts& Live, const FCytraPanelView& View)
+{
+	for (int32 Index = 0; Index < View.Stats.Num() && Index < Live.StatValues.Num(); ++Index)
+	{
+		Live.StatValues[Index]->SetText(View.Stats[Index].Value);
+	}
+	for (int32 Index = 0; Index < View.Actions.Num() && Index < Live.Buttons.Num() && Index < Live.Refusals.Num(); ++Index)
+	{
+		const FCytraPanelAction& Action = View.Actions[Index];
+		Live.Refusals[Index]->SetText(Action.Refusal);
+		Live.Refusals[Index]->SetVisibility(Action.IsEnabled() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		Live.Buttons[Index]->SetRenderOpacity(Action.IsEnabled() ? 1.0f : RefusedOpacity);
 	}
 }
 
@@ -265,13 +288,18 @@ void UCytraOrderPanel::Refresh()
 	}
 
 	const FCytraPanelView View = FCytraPanelView::Build(*Match, Controller->GetSelectedCell());
-	FString Signature = View.Signature();
+	// Rebuilt only when its shape changes: the gold of the mine changes the figures every second.
+	FString Signature = View.ShapeSignature();
 	if (Signature != ShownSignature)
 	{
 		ShownSignature = MoveTemp(Signature);
 		// The buttons are rebuilt: the one under the cursor may never report that it was left.
 		Controller->PreviewTower(NAME_None);
-		ShowCard(Content, View);
+		ShowCard(Content, View, ContentLive);
+	}
+	else
+	{
+		UpdateCard(ContentLive, View);
 	}
 
 	FCytraPanelView CrewView = FCytraPanelView::BuildCrew(*Match);
@@ -296,26 +324,31 @@ void UCytraOrderPanel::Refresh()
 		WorkerStates.Reset();
 		DismissLabels.Reset();
 		DismissTexts.Reset();
-		ShowCard(CrewList, CrewView);
+		ShowCard(CrewList, CrewView, CrewListLive);
 	}
 	for (int32 Index = 0; Index < CrewView.Workers.Num() && Index < WorkerStates.Num(); ++Index)
 	{
 		WorkerStates[Index]->SetText(CrewView.Workers[Index].State);
 		WorkerStates[Index]->SetColorAndOpacity(FSlateColor(ToneColor(CrewView.Workers[Index].Tone)));
 	}
-	FString ButtonsSignature = ButtonsView.Signature();
+	FString ButtonsSignature = ButtonsView.ShapeSignature();
 	if (ButtonsSignature != ShownCrewButtonsSignature)
 	{
 		ShownCrewButtonsSignature = MoveTemp(ButtonsSignature);
 		CrewButtons->ClearChildren();
+		CrewButtonsLive.Reset();
 		for (const FCytraPanelAction& Action : ButtonsView.Actions)
 		{
-			AddAction(CrewButtons, Action);
+			AddAction(CrewButtons, Action, CrewButtonsLive);
 		}
+	}
+	else
+	{
+		UpdateCard(CrewButtonsLive, ButtonsView);
 	}
 }
 
-void UCytraOrderPanel::AddTitle(UVerticalBox* Box, const FCytraPanelView& View)
+void UCytraOrderPanel::AddTitle(UVerticalBox* Box, const FCytraPanelView& View, FCytraLiveTexts& Live)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	UTextBlock* Title = MakeText(21, Palette.Snow, false, View.Title);
@@ -345,6 +378,7 @@ void UCytraOrderPanel::AddTitle(UVerticalBox* Box, const FCytraPanelView& View)
 		UTextBlock* Value = MakeText(15, Palette.Snow, true, View.Stats[Index].Value);
 		Value->SetAutoWrapText(false);
 		Row->AddChildToHorizontalBox(Value);
+		Live.StatValues.Add(Value);
 		const float Gap = Index == View.Stats.Num() - 1 ? BlockGap : 4.0f;
 		Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, Gap));
 	}
@@ -390,7 +424,7 @@ void UCytraOrderPanel::AddLine(UVerticalBox* Box, const FCytraPanelLine& Line, i
 	Box->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 6.0f));
 }
 
-void UCytraOrderPanel::AddAction(UVerticalBox* Box, const FCytraPanelAction& Action)
+void UCytraOrderPanel::AddAction(UVerticalBox* Box, const FCytraPanelAction& Action, FCytraLiveTexts& Live)
 {
 	const FCytraPalette& Palette = FCytraPalette::Get();
 	const FCytraOrderAction Order = Action.Action;
@@ -419,13 +453,15 @@ void UCytraOrderPanel::AddAction(UVerticalBox* Box, const FCytraPanelAction& Act
 	Header->AddChildToHorizontalBox(Cost)->SetPadding(FMargin(10.0f, 0.0f, 0.0f, 0.0f));
 	Body->AddChildToVerticalBox(Header);
 	Body->AddChildToVerticalBox(MakeText(14, Palette.Mist, false, Action.Meta));
-	if (!Action.IsEnabled())
-	{
-		// Dimmed but not disabled, as in the prototype: it still shows the range of its tower under the cursor,
-		// and a click is refused by the rules.
-		Body->AddChildToVerticalBox(MakeText(14, Palette.Warning, false, Action.Refusal));
-		Button->SetRenderOpacity(RefusedOpacity);
-	}
+	// A refused order is dimmed but not disabled, as in the prototype: it still shows the range of its tower under the
+	// cursor, and a click is refused by the rules. The refusal is always there, collapsed while the order is possible,
+	// so that it can come and go with the gold without rebuilding the button.
+	UTextBlock* Refusal = MakeText(14, Palette.Warning, false, Action.Refusal);
+	Refusal->SetVisibility(Action.IsEnabled() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	Body->AddChildToVerticalBox(Refusal);
+	Button->SetRenderOpacity(Action.IsEnabled() ? 1.0f : RefusedOpacity);
+	Live.Buttons.Add(Button);
+	Live.Refusals.Add(Refusal);
 	if (Recruit.IsNone() && Order.Kind == ECytraOrderKind::Build)
 	{
 		const FName Tower = Order.Id;

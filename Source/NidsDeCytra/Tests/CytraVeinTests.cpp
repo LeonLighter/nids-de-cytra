@@ -551,6 +551,15 @@ bool FCytraMineEverySecondTest::RunTest(const FString& Parameters)
 	StepFor(*Match, 10.0);
 	TestEqual(TEXT("10 gold in 10 s"), Match->GetWallet().Mined - Mined, 10);
 
+	// The figures change with the gold, not the shape of the panel: it is updated in place, not rebuilt.
+	const FCytraPanelView After = FCytraPanelView::Build(*Match, Mine);
+	TestNotEqual(TEXT("New figures"), After.Signature(), Open.Signature());
+	TestEqual(TEXT("Same shape"), After.ShapeSignature(), Open.ShapeSignature());
+	// The same for the recruitment buttons, whose refusal ("Il manque N or") follows the gold.
+	const FCytraPanelView CrewBefore = FCytraPanelView::BuildCrew(*Match);
+	StepFor(*Match, 3.0);
+	TestEqual(TEXT("Same crew shape"), FCytraPanelView::BuildCrew(*Match).ShapeSignature(), CrewBefore.ShapeSignature());
+
 	// At extraction level 2, 1.25 gold a second: the button announces the carried fraction as the launch pays it.
 	FCytraMineState* State = const_cast<FCytraGrid&>(Match->GetGrid()).FindMine(Mine);
 	State->Extraction = 2;

@@ -485,3 +485,17 @@ FString FCytraPanelView::Signature() const
 	}
 	return Result;
 }
+
+FString FCytraPanelView::ShapeSignature() const
+{
+	FCytraPanelView Shape = *this;
+	for (FCytraPanelStat& Stat : Shape.Stats)
+	{
+		Stat.Value = FText::GetEmpty();
+	}
+	for (FCytraPanelAction& Action : Shape.Actions)
+	{
+		Action.Refusal = FText::GetEmpty();
+	}
+	return Shape.Signature();
+}
