@@ -302,6 +302,7 @@ namespace
 			&& Waves.Number(TEXT("prepScale"), Balance.PrepScale)
 			&& Waves.Integer(TEXT("threatLevels"), Balance.ThreatLevels) && CheckAtLeast(Waves, TEXT("threatLevels"), Balance.ThreatLevels, 1)
 			&& Waves.Integer(TEXT("earlyLaunchGoldPerSecond"), Balance.EarlyLaunchGoldPerSecond)
+			&& Waves.OptionalBool(TEXT("earlyLaunchMine"), Balance.bEarlyLaunchMine)
 			&& Targeting.Number(TEXT("minX"), Balance.TargetingMinX);
 	}
 }

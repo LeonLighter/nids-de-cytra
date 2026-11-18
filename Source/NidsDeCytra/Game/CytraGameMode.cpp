@@ -206,9 +206,9 @@ void ACytraGameMode::LaunchWave()
 		return;
 	}
 	const FCytraLaunchResult Result = Match->LaunchWave();
-	if (Result.bLaunched && Result.Bonus > 0)
+	if (Result.bLaunched && (Result.Bonus > 0 || Result.MineGold > 0))
 	{
-		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold"), Result.Bonus);
+		UE_LOG(LogCytra, Log, TEXT("Match: wave launched early, +%d gold, +%d gold from the mine"), Result.Bonus, Result.MineGold);
 	}
 	if (const TOptional<FCytraMessage> Message = FCytraMessages::FromLaunch(Result))
 	{

@@ -22,7 +22,7 @@
   "dismantle": { "time": 3, "refund": 0.75 },
   "highSlotRangeBonus": 1.3,
   "mine": {
-    "slots": 2, "period": 6, "yield": 2,
+    "slots": 2, "period": 4, "yield": 2,
     "vein": { "role": "Miner", "reserve": 150, "reserveFactor": 1.6, "cost": 120, "costFactor": 1.7, "time": 10 },
     "extraction": { "role": "Miner", "cost": 75, "costFactor": 1.7, "time": 8, "yieldFactor": 1.25 }
   },
@@ -32,6 +32,6 @@
     "Soldier": { "hp": 140, "speed": 0.85, "gold": 18, "eggs": 2 },
     "Captain": { "hp": 1250, "speed": 0.6, "gold": 120, "eggs": 5 }
   },
-  "waves": { "hpScalePerWave": 0.2, "endBonusBase": 25, "endBonusPerWave": 6, "prepBase": 60, "prepScale": 0, "threatLevels": 5, "earlyLaunchGoldPerSecond": 0 },
+  "waves": { "hpScalePerWave": 0.2, "endBonusBase": 25, "endBonusPerWave": 6, "prepBase": 60, "prepScale": 0, "threatLevels": 5, "earlyLaunchGoldPerSecond": 0, "earlyLaunchMine": true },
   "targeting": { "minX": -0.4 }
 }

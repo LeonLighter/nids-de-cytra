@@ -46,6 +46,8 @@ namespace CytraText
 		TEXT("Message.Recruited"),
 		TEXT("Message.Dismissed"),
 		TEXT("Message.EarlyLaunch"),
+		TEXT("Message.EarlyLaunchMine"),
+		TEXT("Message.EarlyLaunchBoth"),
 		TEXT("End.WonTitle"),
 		TEXT("End.WonBody"),
 		TEXT("End.LostTitle"),

@@ -152,6 +152,8 @@ struct NIDSDECYTRA_API FCytraBalance
 	double PrepScale = 0.0;
 	int32 ThreatLevels = 1;
 	int32 EarlyLaunchGoldPerSecond = 0;
+	/** Launching a wave before its countdown ends pays at once what the miners at the mine would have extracted meanwhile. */
+	bool bEarlyLaunchMine = false;
 
 	/** Enemies left of this x (still off the map) cannot be targeted. */
 	double TargetingMinX = 0.0;

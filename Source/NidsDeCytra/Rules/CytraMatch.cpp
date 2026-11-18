@@ -137,6 +137,10 @@ FCytraLaunchResult FCytraMatch::StartWave(bool bAuto)
 	{
 		Result.Bonus = Balance.EarlyLaunchBonus(Countdown.GetValue());
 		Wallet.Earn(Result.Bonus);
+		if (Balance.bEarlyLaunchMine)
+		{
+			Result.MineGold = ExtractAhead(FMath::Max(Countdown.GetValue(), 0.0));
+		}
 	}
 	SpawnQueue = Waves.SpawnQueue(Wave);
 	++Wave;
@@ -663,7 +667,32 @@ void FCytraMatch::StepWorkers(double Dt)
 	}
 }
 
-void FCytraMatch::Extract(const FIntPoint& Cell)
+int32 FCytraMatch::ExtractAhead(double Seconds)
+{
+	// Miners on their way to the mine do not count. The time skipped is spent: each miner's period goes on from there.
+	const int32 Before = Wallet.Mined;
+	for (FCytraWorker& Worker : Workers)
+	{
+		if (Worker.State != ECytraWorkerState::Mining)
+		{
+			continue;
+		}
+		Worker.MineTime += Seconds;
+		while (Worker.State == ECytraWorkerState::Mining && Worker.MineTime >= Balance.MinePeriod)
+		{
+			Worker.MineTime -= Balance.MinePeriod;
+			const FIntPoint* Mine = FindWorkableMine();
+			if (!Mine)
+			{
+				break;
+			}
+			Extract(*Mine, false);
+		}
+	}
+	return Wallet.Mined - Before;
+}
+
+void FCytraMatch::Extract(const FIntPoint& Cell, bool bShow)
 {
 	FCytraMineState& Mine = *Grid.FindMine(Cell);
 	Mine.Carry += Balance.MineYieldAt(Mine.Extraction);
@@ -676,9 +705,9 @@ void FCytraMatch::Extract(const FIntPoint& Cell)
 		Mine.Reserve = Mine.Reserve.GetValue() - Gold;
 	}
 
-	if (Gold > 0)
+	Wallet.EarnFromMine(Gold);
+	if (Gold > 0 && bShow)
 	{
-		Wallet.EarnFromMine(Gold);
 		FCytraMatchEvent& Event = Events.AddDefaulted_GetRef();
 		Event.Type = ECytraMatchEventType::MineYield;
 		Event.Gold = Gold;

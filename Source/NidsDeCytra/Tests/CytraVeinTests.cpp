@@ -24,6 +24,7 @@ namespace CytraVeinTest
 		int32 Reserve = 0;
 		int32 DeepenCost = 120;
 		bool bExtraction = false;
+		bool bEarlyLaunchMine = false;
 		TArray<FName> StartRoles = { Miner };
 	};
 
@@ -44,6 +45,12 @@ namespace CytraVeinTest
 		if (Setup.bExtraction)
 		{
 			Balance.MineExtraction = FCytraMineExtractionDef{ true, Miner, 75, 1.7, 8.0, 1.25 };
+		}
+		Balance.bEarlyLaunchMine = Setup.bEarlyLaunchMine;
+		if (Setup.bEarlyLaunchMine)
+		{
+			// As in the game since J66: no early launch bonus, only the gold of the mine.
+			Balance.EarlyLaunchGoldPerSecond = 0;
 		}
 		return FCytraMatch(Map, Balance, Waves);
 	}
@@ -84,6 +91,37 @@ namespace CytraVeinTest
 	FString StatText(const FCytraPanelView& View, int32 Index)
 	{
 		return View.Stats.IsValidIndex(Index) ? View.Stats[Index].Label.ToString() + TEXT(" ") + View.Stats[Index].Value.ToString() : FString(TEXT("<no stat>"));
+	}
+
+	/** Launches the next wave and kills every enemy as soon as it spawns, until the wave is cleared. */
+	bool ClearWave(FCytraMatch& Match)
+	{
+		Match.LaunchWave();
+		for (int32 Guard = 0; Guard < 60 * 120 && Match.GetPhase() == ECytraMatchPhase::Wave; ++Guard)
+		{
+			Match.Step(Dt);
+			for (const FCytraEnemy& Enemy : TArray<FCytraEnemy>(Match.GetEnemies()))
+			{
+				Match.DamageEnemy(Enemy.Id, 1e6);
+			}
+		}
+		return Match.GetPhase() == ECytraMatchPhase::Prep;
+	}
+
+	/** The mine opened, wave 1 cleared, and the countdown before wave 2 running for a second. */
+	TOptional<FCytraMatch> MakePrep(FAutomationTestBase& Test, const FSetup& Setup)
+	{
+		TOptional<FCytraMatch> Match = MakeMatch(Test, Setup);
+		if (!Match || !OpenMine(Test, *Match) || !Test.TestTrue(TEXT("Wave 1 cleared"), ClearWave(*Match)))
+		{
+			return {};
+		}
+		StepFor(*Match, 1.0);
+		if (!Test.TestTrue(TEXT("Countdown running"), Match->GetCountdown().IsSet()) || !Test.TestEqual(TEXT("Miner at the mine"), Match->MinersMining(), 1))
+		{
+			return {};
+		}
+		return Match;
 	}
 
 // The tests live in the namespace too: unity builds merge test files, and other files have helpers with the same names.
@@ -394,6 +432,87 @@ bool FCytraVeinPanelTest::RunTest(const FString& Parameters)
 			FString(TEXT("Filon épuisé : les mineurs remontent. Creuse jusqu’au filon suivant pour reprendre l’extraction.")));
 	}
 	TestEqual(TEXT("Both orders still offered"), Empty.Actions.Num(), 2);
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraEarlyLaunchMineTest, "Cytra.Rules.Mine.EarlyLaunchPaysMine", CytraTest::Flags)
+
+bool FCytraEarlyLaunchMineTest::RunTest(const FString& Parameters)
+{
+	FSetup Setup;
+	Setup.bEarlyLaunchMine = true;
+	TOptional<FCytraMatch> Match = MakePrep(*this, Setup);
+	if (!Match)
+	{
+		return false;
+	}
+	const double Left = Match->GetCountdown().GetValue();
+	const double MineTime = Match->GetWorkers()[0].MineTime;
+	const int32 Mined = Match->GetWallet().Mined;
+	const int32 Gold = Match->GetWallet().Gold;
+
+	// The same match left to run until the wave launches on its own: what the mine would have paid.
+	FCytraMatch Waiting = *Match;
+	for (int32 i = 0; i < 60 * 60 && Waiting.GetPhase() == ECytraMatchPhase::Prep; ++i)
+	{
+		Waiting.Step(Dt);
+	}
+	const int32 WouldHaveMined = Waiting.GetWallet().Mined - Mined;
+
+	Match->ConsumeEffects();
+	const FCytraLaunchResult Launch = Match->LaunchWave();
+	TestTrue(TEXT("Launched"), Launch.bLaunched);
+	TestEqual(TEXT("Every period left, 2 gold each"), Launch.MineGold, 2 * FMath::FloorToInt32((MineTime + Left) / 6.0));
+	TestEqual(TEXT("As much as waiting would have paid"), Launch.MineGold, WouldHaveMined);
+	TestTrue(TEXT("Something paid"), Launch.MineGold > 0);
+	TestEqual(TEXT("No bonus"), Launch.Bonus, 0);
+	TestEqual(TEXT("Paid at once"), Match->GetWallet().Gold, Gold + Launch.MineGold);
+	TestEqual(TEXT("Counted as mined"), Match->GetWallet().Mined, Mined + Launch.MineGold);
+	TestEqual(TEXT("The period goes on from the time skipped"), Match->GetWorkers()[0].MineTime, FMath::Fmod(MineTime + Left, 6.0), 1e-9);
+	TestTrue(TEXT("No gold shown on the map"), Match->ConsumeEffects().IsEmpty());
+	TestEqual(TEXT("Message"), FCytraMessages::FromLaunch(Launch)->Text.ToString(),
+		FString::Printf(TEXT("Vague lancée en avance : +%d or de la mine"), Launch.MineGold));
+
+	// Wave 1 has no countdown: nothing to pay.
+	TOptional<FCytraMatch> First = MakeMatch(*this, Setup);
+	if (First && OpenMine(*this, *First))
+	{
+		StepFor(*First, 3.0);
+		TestEqual(TEXT("Nothing for wave 1"), First->LaunchWave().MineGold, 0);
+	}
+
+	// The prototype pays nothing.
+	FSetup Prototype;
+	TOptional<FCytraMatch> Off = MakePrep(*this, Prototype);
+	if (Off)
+	{
+		TestEqual(TEXT("Nothing in the prototype"), Off->LaunchWave().MineGold, 0);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraEarlyLaunchReserveTest, "Cytra.Rules.Mine.EarlyLaunchWithinReserve", CytraTest::Flags)
+
+bool FCytraEarlyLaunchReserveTest::RunTest(const FString& Parameters)
+{
+	FSetup Setup;
+	Setup.bEarlyLaunchMine = true;
+	Setup.Reserve = 1000;
+	TOptional<FCytraMatch> Match = MakePrep(*this, Setup);
+	if (!Match)
+	{
+		return false;
+	}
+	// Leave 3 gold in the vein: the launch pays them and no more, then the mine is exhausted.
+	FCytraMineState* State = const_cast<FCytraGrid&>(Match->GetGrid()).FindMine(Mine);
+	State->Reserve = 3;
+	Match->ConsumeEvents();
+	const FCytraLaunchResult Launch = Match->LaunchWave();
+	TestEqual(TEXT("Only what is left"), Launch.MineGold, 3);
+	TestTrue(TEXT("Exhausted"), MineState(*Match).IsExhausted());
+	TestTrue(TEXT("Exhaustion event"), HasEvent(Match->ConsumeEvents(), ECytraMatchEventType::MineExhausted));
+	TestEqual(TEXT("The miner leaves"), Match->MinersAtMine(), 0);
 	return true;
 }
 

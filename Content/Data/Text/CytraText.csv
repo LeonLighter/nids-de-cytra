@@ -190,6 +190,8 @@ Message.Waiting,"{0}, en attente d’un {1} libre","Ordre accepté sans ouvrier 
 Message.Recruited,"{0} recruté : il arrive au camp","Message bref. {0} : Role.*.Name"
 Message.Dismissed,"{0} renvoyé : +{1} or","Message bref. {0} : Role.*.Name, {1} : or rendu"
 Message.EarlyLaunch,"Vague lancée en avance : +{0} or","Message bref. {0} : bonus d'or"
+Message.EarlyLaunchMine,"Vague lancée en avance : +{0} or de la mine","Message bref. {0} : or que la mine aurait versé jusqu'à la fin du compte à rebours"
+Message.EarlyLaunchBoth,"Vague lancée en avance : +{0} or, +{1} or de la mine","Message bref. {0} : bonus d'or, {1} : or de la mine pour le temps gagné"
 End.WonTitle,"La couvée est sauve","Écran de fin, victoire : titre"
 End.WonBody,"Dix vagues repoussées, {0} {0}|plural(one=œuf,other=œufs) sur {1} {0}|plural(one=intact,other=intacts). Cytra s’en souviendra.","Écran de fin, victoire. {0} : œufs restants, {1} : œufs au départ"
 End.LostTitle,"La couvée est perdue","Écran de fin, défaite : titre"

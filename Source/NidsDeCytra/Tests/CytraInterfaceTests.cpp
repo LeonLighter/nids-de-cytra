@@ -206,6 +206,12 @@ bool FCytraMessagesOrdersTest::RunTest(const FString& Parameters)
 	Launch.Bonus = 18;
 	const TOptional<FCytraMessage> Early = FCytraMessages::FromLaunch(Launch);
 	TestEqual(TEXT("Early launch"), Early ? Early->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +18 or")));
+	Launch.MineGold = 12;
+	const TOptional<FCytraMessage> Both = FCytraMessages::FromLaunch(Launch);
+	TestEqual(TEXT("Early launch with the mine"), Both ? Both->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +18 or, +12 or de la mine")));
+	Launch.Bonus = 0;
+	const TOptional<FCytraMessage> MineOnly = FCytraMessages::FromLaunch(Launch);
+	TestEqual(TEXT("Early launch, mine only"), MineOnly ? MineOnly->Text.ToString() : FString(), FString(TEXT("Vague lancée en avance : +12 or de la mine")));
 	return true;
 }
 

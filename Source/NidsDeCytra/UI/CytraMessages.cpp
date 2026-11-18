@@ -116,9 +116,21 @@ FCytraMessage FCytraMessages::FromDismiss(const FCytraDismissCheck& Check)
 
 TOptional<FCytraMessage> FCytraMessages::FromLaunch(const FCytraLaunchResult& Result)
 {
-	if (!Result.bLaunched || Result.Bonus <= 0)
+	if (!Result.bLaunched)
 	{
 		return {};
 	}
-	return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunch")), Result.Bonus));
+	if (Result.Bonus > 0 && Result.MineGold > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunchBoth")), Result.Bonus, Result.MineGold));
+	}
+	if (Result.Bonus > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunch")), Result.Bonus));
+	}
+	if (Result.MineGold > 0)
+	{
+		return Good(FText::Format(CytraText::Get(TEXT("Message.EarlyLaunchMine")), Result.MineGold));
+	}
+	return {};
 }

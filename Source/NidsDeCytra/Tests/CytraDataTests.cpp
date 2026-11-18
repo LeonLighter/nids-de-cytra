@@ -89,6 +89,7 @@ bool FCytraDataLoadsBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Max level"), Balance.Upgrade.MaxLevel, 3);
 	TestEqual(TEXT("Mine slots"), Balance.MineSlots, 2);
 	TestFalse(TEXT("Prototype mine without veins"), Balance.MineVein.bEnabled);
+	TestFalse(TEXT("Prototype early launch without mine gold"), Balance.bEarlyLaunchMine);
 	TestFalse(TEXT("Prototype mine without extraction levels"), Balance.MineExtraction.bEnabled);
 	TestEqual(TEXT("Targeting min x"), Balance.TargetingMinX, -0.4);
 	return true;
@@ -116,6 +117,8 @@ bool FCytraDataLiveBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("No free miner"), Balance.Roles.FindChecked(TEXT("Miner")).FreeRecruits, 0);
 	TestEqual(TEXT("No early launch bonus"), Balance.EarlyLaunchBonus(45.0), 0);
 	TestEqual(TEXT("Mine opening"), Balance.Works.FindChecked(TEXT("OpenMine")).Cost, 150);
+	TestEqual(TEXT("Mine period"), Balance.MinePeriod, 4.0);
+	TestTrue(TEXT("Early launch pays the mine"), Balance.bEarlyLaunchMine);
 	TestTrue(TEXT("Mine with veins"), Balance.MineVein.bEnabled);
 	TestEqual(TEXT("Veins dug by miners"), Balance.MineVein.Role, FName(TEXT("Miner")));
 	TestTrue(TEXT("Mine with extraction levels"), Balance.MineExtraction.bEnabled);
