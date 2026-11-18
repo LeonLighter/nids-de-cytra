@@ -243,7 +243,7 @@ Chaque groupe fait apparaître `nombre` ennemis sur sa route, le premier après 
 - **Avant la vague 1** : pas de compte à rebours. Le joueur recrute son équipe, donne ses ordres et lance la vague quand il veut.
 - **Pendant une vague** : elle se termine quand tous ses ennemis sont apparus et qu'il n'en reste aucun en vie.
 - **Fin de vague** `n` : prime de `25 + 6 × n` or, puis phase de préparation.
-- **Préparation** : un compte à rebours de 60 s lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt, sans bonus : il gagne seulement du temps. (Le prototype donnait 1 or par seconde entière restante ; ce taux, `earlyLaunchGoldPerSecond`, vaut désormais 0.)
+- **Préparation** : un compte à rebours de 60 s lance automatiquement la vague suivante. Le joueur peut la lancer plus tôt, sans bonus fixe (le prototype donnait 1 or par seconde entière restante ; ce taux, `earlyLaunchGoldPerSecond`, vaut désormais 0). En revanche, il touche aussitôt l'or que les mineurs **à la mine** auraient extrait jusqu'à la fin du compte à rebours : chaque période complète qu'ils auraient finie, au rendement de leur niveau d'extraction, dans la limite de la réserve du filon, qui est consommée (le filon peut s'épuiser ainsi). Les mineurs en chemin vers la mine ne comptent pas. Le temps sauté est imputé : la période en cours de chaque mineur reprend d'autant. Cet or compte dans l'or extrait. La vague 1, sans compte à rebours, ne verse rien. Réglage `earlyLaunchMine` de la section `waves`, absent du prototype.
 - Les ordres sont possibles à tout moment : préparation, vague, pause.
 
 ### Menace et temps de préparation
@@ -281,7 +281,7 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 ### Mine d'or
 
 - Fermée au départ. L'ordre « Ouvrir la mine » (mineur, 150 or, 8 s) la rend exploitable. Son coût dépasse l'or de départ moins un mineur (170 − 40) : on ne peut pas recruter un mineur et ouvrir la mine d'emblée.
-- 2 places. Chaque mineur sur place rapporte de l'or toutes les 6 secondes, selon le niveau d'extraction.
+- 2 places. Chaque mineur sur place rapporte de l'or toutes les 4 secondes (prototype : 6), selon le niveau d'extraction.
 - Les mineurs y vont d'eux-mêmes quand ils n'ont pas de chantier. Un déblayage commandé rappelle un mineur de la mine si aucun autre n'est libre.
 - **Filons.** La mine s'ouvre sur le filon 1, qui contient une réserve d'or limitée. Chaque extraction est prise dans la réserve ; la dernière ne verse que ce qui reste. Une fois la réserve vide, le filon est épuisé : les mineurs à la mine ou en chemin la quittent et rentrent au camp, et aucun n'y redescend.
 - **Creuser jusqu'au filon suivant** (mineur, 10 s) fait passer la mine au filon n + 1 et ajoute sa réserve à ce qui reste : l'ordre est possible avant l'épuisement. Il n'y a pas de filon maximal.
@@ -292,7 +292,7 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 | --- | --- | --- | --- |
 | Réserve du filon n | 150 or | 1,6 | 150 ; 240 ; 384 |
 | Coût pour creuser du filon n au suivant | 120 or | 1,7 | 120 ; 204 ; 347 |
-| Rendement par mineur au niveau d'extraction n | 2 or / 6 s | 1,25 | 2 ; 2,5 ; 3,125 |
+| Rendement par mineur au niveau d'extraction n | 2 or / 4 s | 1,25 | 2 ; 2,5 ; 3,125 |
 | Coût pour améliorer l'extraction du niveau n au suivant | 75 or | 1,7 | 75 ; 128 ; 217 |
 
 - Sans sous-section `vein`, la mine est sans fin ; sans sous-section `extraction`, le rendement est fixe : c'est le cas du prototype, et de l'équilibrage de référence des tests.
@@ -332,7 +332,7 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 ## 13. Cas de test de référence
 
-Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement) et J67 (ouverture de la mine à 150 or, filons à réserve limitée, niveaux d'extraction). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
+Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement) et J67 (ouverture de la mine à 150 or, période de 4 s, filons à réserve limitée, niveaux d'extraction, or de la mine versé au lancement anticipé). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
 
 1. Au départ, exactement 5 emplacements sont accessibles : `(3,2)`, `(11,4)`, `(2,12)`, `(10,10)`, `(19,6)`.
 2. Chaque route mesure 27 cases.
