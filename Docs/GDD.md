@@ -281,18 +281,18 @@ L'interface annonce la vague suivante : son niveau de menace et, par route, le n
 ### Mine d'or
 
 - Fermée au départ. L'ordre « Ouvrir la mine » (mineur, 150 or, 8 s) la rend exploitable. Son coût dépasse l'or de départ moins un mineur (170 − 40) : on ne peut pas recruter un mineur et ouvrir la mine d'emblée.
-- 2 places. Chaque mineur sur place rapporte de l'or toutes les 4 secondes (prototype : 6), selon le niveau d'extraction.
+- 2 places. Chaque mineur sur place rapporte 1 or par seconde au niveau d'extraction 1 (prototype : 2 or toutes les 6 secondes).
 - Les mineurs y vont d'eux-mêmes quand ils n'ont pas de chantier. Un déblayage commandé rappelle un mineur de la mine si aucun autre n'est libre.
 - **Filons.** La mine s'ouvre sur le filon 1, qui contient une réserve d'or limitée. Chaque extraction est prise dans la réserve ; la dernière ne verse que ce qui reste. Une fois la réserve vide, le filon est épuisé : les mineurs à la mine ou en chemin la quittent et rentrent au camp, et aucun n'y redescend.
 - **Creuser jusqu'au filon suivant** (mineur, 10 s) fait passer la mine au filon n + 1 et ajoute sa réserve à ce qui reste : l'ordre est possible avant l'épuisement. Il n'y a pas de filon maximal.
-- **Améliorer l'extraction** (mineur, 8 s) augmente le rendement de chaque mineur, indépendamment du filon. Pas de niveau maximal. Un rendement fractionnaire est cumulé : à 2,5 or par période, un mineur verse 2, puis 3, puis 2…
+- **Améliorer l'extraction** (mineur, 8 s) augmente le rendement de chaque mineur, indépendamment du filon. Pas de niveau maximal. Un rendement fractionnaire est cumulé : à 1,25 or par seconde, un mineur verse 1, 1, 1, puis 2…
 - Valeurs, toutes dans `Balance.json` (section `mine`, sous-sections `vein` et `extraction`), arrondies à l'entier le plus proche, une valeur au niveau n valant base × facteur^(n − 1) :
 
 | Grandeur | Base | Facteur | Niveaux 1 ; 2 ; 3 |
 | --- | --- | --- | --- |
 | Réserve du filon n | 150 or | 1,6 | 150 ; 240 ; 384 |
 | Coût pour creuser du filon n au suivant | 120 or | 1,7 | 120 ; 204 ; 347 |
-| Rendement par mineur au niveau d'extraction n | 2 or / 4 s | 1,25 | 2 ; 2,5 ; 3,125 |
+| Rendement par mineur au niveau d'extraction n | 1 or / s | 1,25 | 1 ; 1,25 ; 1,5625 |
 | Coût pour améliorer l'extraction du niveau n au suivant | 75 or | 1,7 | 75 ; 128 ; 217 |
 
 - Sans sous-section `vein`, la mine est sans fin ; sans sous-section `extraction`, le rendement est fixe : c'est le cas du prototype, et de l'équilibrage de référence des tests.
@@ -316,7 +316,7 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 - **Clic sur une case** : la sélectionne. Un panneau affiche ce qu'elle est et les ordres possibles, avec pour chacun le coût, la spécialité requise, la durée du chantier et, s'il est refusé, la raison.
 - **Emplacement sélectionné** : la portée de la tourelle (ou de la tourelle envisagée) est dessinée sur la carte.
-- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » (qui n'affiche un bonus d'or que si `earlyLaunchGoldPerSecond` est positif).
+- **Bandeau** : or, œufs, vague en cours sur 10, annonce de la vague suivante, compte à rebours, bouton « Lancer la vague » : pendant le compte à rebours, il annonce l'or que le lancement verserait tout de suite, bonus (si `earlyLaunchGoldPerSecond` est positif) et or de la mine, par exemple « Lancer maintenant (+42 or de la mine) » ; sinon il nomme la vague à lancer.
 - **Équipe** : liste des ouvriers avec spécialité et état (ou une ligne qui invite à recruter tant que l'équipe est vide), trois boutons de recrutement avec leur coût (« Gratuit » pour une recrue gratuite).
 - **Temps** : pause, vitesse ×1, ×2, ×3, recommencer (avec confirmation).
 - **Sur la carte** : barre de progression au-dessus de chaque chantier, signalée différemment tant qu'aucun ouvrier n'y est affecté ; barre de vie sur les ennemis blessés ; marque distincte pour les emplacements accessibles, inaccessibles et les promontoires ; indication des routes que prendra la vague suivante.
@@ -332,7 +332,7 @@ Vue isométrique fixe (projection orthographique, isométrie vraie, vue depuis l
 
 ## 13. Cas de test de référence
 
-Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement) et J67 (ouverture de la mine à 150 or, période de 4 s, filons à réserve limitée, niveaux d'extraction, or de la mine versé au lancement anticipé). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
+Ces résultats viennent du prototype. Les tests de règles doivent les retrouver : ils chargent l'équilibrage du prototype, figé dans `Source/NidsDeCytra/Tests/Reference/Balance.json`, et non `Content/Data/Balance.json`, qui s'en écarte depuis J66 (équipe vide, premier charpentier gratuit, 60 s de préparation, pas de bonus de lancement) et J67 (ouverture de la mine à 150 or, rendement de 1 or par seconde, filons à réserve limitée, niveaux d'extraction, or de la mine versé au lancement anticipé). Le test `Cytra.Data.Balance.Live` vérifie, lui, les valeurs du jeu actuel.
 
 1. Au départ, exactement 5 emplacements sont accessibles : `(3,2)`, `(11,4)`, `(2,12)`, `(10,10)`, `(19,6)`.
 2. Chaque route mesure 27 cases.

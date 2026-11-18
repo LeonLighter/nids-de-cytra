@@ -17,11 +17,21 @@ namespace
 	}
 }
 
-FText FCytraHudView::LaunchLabel(bool bHasCountdown, int32 EarlyLaunchBonus, int32 NextWave)
+FText FCytraHudView::LaunchLabel(bool bHasCountdown, int32 EarlyLaunchBonus, int32 MineGold, int32 NextWave)
 {
-	return bHasCountdown && EarlyLaunchBonus > 0
-		? FText::Format(CytraText::Get(TEXT("Hud.LaunchNow")), EarlyLaunchBonus)
-		: FText::Format(CytraText::Get(TEXT("Hud.LaunchFirst")), NextWave);
+	if (bHasCountdown && EarlyLaunchBonus > 0 && MineGold > 0)
+	{
+		return FText::Format(CytraText::Get(TEXT("Hud.LaunchNowBoth")), EarlyLaunchBonus, MineGold);
+	}
+	if (bHasCountdown && EarlyLaunchBonus > 0)
+	{
+		return FText::Format(CytraText::Get(TEXT("Hud.LaunchNow")), EarlyLaunchBonus);
+	}
+	if (bHasCountdown && MineGold > 0)
+	{
+		return FText::Format(CytraText::Get(TEXT("Hud.LaunchNowMine")), MineGold);
+	}
+	return FText::Format(CytraText::Get(TEXT("Hud.LaunchFirst")), NextWave);
 }
 
 FText FCytraHudView::Forecast(const FCytraMatch& Match, int32 WaveIndex)

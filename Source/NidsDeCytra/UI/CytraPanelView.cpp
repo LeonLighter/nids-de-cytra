@@ -204,6 +204,13 @@ namespace
 	}
 
 	/** Gold that may be fractional, such as a yield of 2.5, with at most two decimals. */
+	/** How often the mine pays: "chaque seconde", or "toutes les 6 s". */
+	FText EveryPeriod(double Seconds)
+	{
+		return FMath::IsNearlyEqual(Seconds, 1.0) ? CytraText::Get(TEXT("Panel.EverySecond"))
+			: FText::Format(CytraText::Get(TEXT("Panel.EverySeconds")), FText::AsNumber(Seconds));
+	}
+
 	FText GoldAmount(double Value)
 	{
 		FNumberFormattingOptions Options;
@@ -225,7 +232,7 @@ namespace
 		View.Title = TileText(Type, TEXT("Title"));
 		View.TitleNote = FText::Format(CytraText::Get(TEXT("Panel.MineMiners")), Mining, Balance.MineSlots);
 		AddStat(View, TEXT("Panel.MineIncome"), FText::Format(CytraText::Get(TEXT("Panel.MineIncomeValue")),
-			GoldAmount(Mining * Balance.MineYieldAt(Mine.Extraction)), FText::AsNumber(Balance.MinePeriod)));
+			GoldAmount(Mining * Balance.MineYieldAt(Mine.Extraction)), EveryPeriod(Balance.MinePeriod)));
 		AddStat(View, TEXT("Panel.MineMined"), FText::Format(CytraText::Get(TEXT("Panel.Cost")), Match.GetWallet().Mined));
 		if (Mine.Reserve.IsSet())
 		{
@@ -256,7 +263,7 @@ namespace
 			if (Balance.MineExtraction.bEnabled)
 			{
 				AddAction(View, Match, Cell, FCytraOrderAction::ImproveMine(), FText::Format(CytraText::Get(TEXT("Panel.Improve")), Mine.Extraction + 1),
-					FText::Format(CytraText::Get(TEXT("Panel.ImproveExtra")), GoldAmount(Balance.MineYieldAt(Mine.Extraction + 1)), FText::AsNumber(Balance.MinePeriod)));
+					FText::Format(CytraText::Get(TEXT("Panel.ImproveExtra")), GoldAmount(Balance.MineYieldAt(Mine.Extraction + 1)), EveryPeriod(Balance.MinePeriod)));
 			}
 		}
 		if (Mine.IsExhausted())
@@ -363,7 +370,7 @@ FCytraPanelView FCytraPanelView::Build(const FCytraMatch& Match, const TOptional
 	{
 		const FCytraBalance& Balance = Match.GetBalance();
 		View.Title = TileText(Type, TEXT("Title"));
-		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(TileText(Type, TEXT("Desc")), Balance.MineYield, FText::AsNumber(Balance.MinePeriod), Balance.MineSlots));
+		AddLine(View, ECytraPanelLineStyle::Text, FText::Format(TileText(Type, TEXT("Desc")), Balance.MineYield, EveryPeriod(Balance.MinePeriod), Balance.MineSlots));
 		if (const TOptional<int32> Reserve = Balance.VeinReserve(1))
 		{
 			AddLine(View, ECytraPanelLineStyle::Text, FText::Format(CytraText::Get(TEXT("Panel.MineFirstVein")), Reserve.GetValue()));

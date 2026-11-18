@@ -520,6 +520,48 @@ int32 FCytraMatch::MinersMining() const
 	return Workers.FilterByPredicate([](const FCytraWorker& Worker) { return Worker.State == ECytraWorkerState::Mining; }).Num();
 }
 
+int32 FCytraMatch::MineGoldAhead() const
+{
+	const FIntPoint* Cell = FindWorkableMine();
+	if (!Balance.bEarlyLaunchMine || Phase != ECytraMatchPhase::Prep || !Countdown.IsSet() || !Cell)
+	{
+		return 0;
+	}
+	// The same steps as ExtractAhead and Extract, on copies of the miners' time and of the mine.
+	const double Seconds = FMath::Max(Countdown.GetValue(), 0.0);
+	const FCytraMineState& Mine = *Grid.GetMine(*Cell);
+	const double Yield = Balance.MineYieldAt(Mine.Extraction);
+	double Carry = Mine.Carry;
+	TOptional<int32> Reserve = Mine.Reserve;
+	int32 Total = 0;
+	for (const FCytraWorker& Worker : Workers)
+	{
+		if (Worker.State != ECytraWorkerState::Mining)
+		{
+			continue;
+		}
+		double MineTime = Worker.MineTime + Seconds;
+		while (MineTime >= Balance.MinePeriod)
+		{
+			if (Reserve.IsSet() && Reserve.GetValue() <= 0)
+			{
+				return Total;
+			}
+			MineTime -= Balance.MinePeriod;
+			Carry += Yield;
+			int32 Gold = FMath::FloorToInt32(Carry + 1e-9);
+			Carry = FMath::Max(0.0, Carry - Gold);
+			if (Reserve.IsSet())
+			{
+				Gold = FMath::Min(Gold, Reserve.GetValue());
+				Reserve = Reserve.GetValue() - Gold;
+			}
+			Total += Gold;
+		}
+	}
+	return Total;
+}
+
 const FIntPoint* FCytraMatch::FindWorkableMine() const
 {
 	return Map.Mines.FindByPredicate([this](const FIntPoint& Mine) { return Grid.IsWorkableMine(Mine); });

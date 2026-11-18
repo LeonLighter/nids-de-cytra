@@ -205,7 +205,7 @@ bool FCytraPanelTilesTest::RunTest(const FString& Parameters)
 	const FCytraPanelView Mine = Panel(*Match, FIntPoint(14, 11));
 	TestEqual(TEXT("Mine"), Mine.Title.ToString(), FString(TEXT("Mine d’or")));
 	TestEqual(TEXT("Mine description"), LineText(Mine, 0),
-		FString(TEXT("Une galerie condamnée. Une fois rouverte, chaque mineur sans chantier y extrait 2 or toutes les 6 secondes. 2 places.")));
+		FString(TEXT("Une galerie condamnée. Une fois rouverte, chaque mineur sans chantier y extrait 2 or toutes les 6 s. 2 places.")));
 	TestEqual(TEXT("Mine can be opened"), Mine.Actions.Num(), 1);
 
 	const FCytraPanelView Outpost = Panel(*Match, FIntPoint(4, 7));

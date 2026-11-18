@@ -30,6 +30,7 @@ void ACytraGameState::UpdateFromMatch(const FCytraMatch& Match, bool bInPaused, 
 	Set(bHasCountdown, Countdown.IsSet());
 	Set(CountdownSeconds, Countdown.IsSet() ? static_cast<int32>(FMath::CeilToDouble(Countdown.GetValue())) : 0);
 	Set(EarlyLaunchBonus, Countdown.IsSet() ? Match.GetBalance().EarlyLaunchBonus(Countdown.GetValue()) : 0);
+	Set(EarlyLaunchMineGold, Match.MineGoldAhead());
 	Set(EnemiesLeft, Match.GetEnemies().Num() + Match.GetPendingSpawns());
 	Set(bMatchPaused, bInPaused);
 	Set(Speed, InSpeed);

@@ -25,6 +25,8 @@ namespace CytraVeinTest
 		int32 DeepenCost = 120;
 		bool bExtraction = false;
 		bool bEarlyLaunchMine = false;
+		/** Mine period and yield as in the game since J67 (1 gold a second) instead of the prototype's. */
+		bool bEverySecond = false;
 		TArray<FName> StartRoles = { Miner };
 	};
 
@@ -47,6 +49,11 @@ namespace CytraVeinTest
 			Balance.MineExtraction = FCytraMineExtractionDef{ true, Miner, 75, 1.7, 8.0, 1.25 };
 		}
 		Balance.bEarlyLaunchMine = Setup.bEarlyLaunchMine;
+		if (Setup.bEverySecond)
+		{
+			Balance.MinePeriod = 1.0;
+			Balance.MineYield = 1;
+		}
 		if (Setup.bEarlyLaunchMine)
 		{
 			// As in the game since J66: no early launch bonus, only the gold of the mine.
@@ -151,9 +158,9 @@ bool FCytraVeinValuesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Extraction 3"), Live.ExtractionCost(2), 128);
 	TestEqual(TEXT("Extraction 4"), Live.ExtractionCost(3), 217);
 	TestEqual(TEXT("Extraction time"), Live.MineExtraction.Time, 8.0);
-	TestEqual(TEXT("Yield 1"), Live.MineYieldAt(1), 2.0);
-	TestEqual(TEXT("Yield 2"), Live.MineYieldAt(2), 2.5);
-	TestEqual(TEXT("Yield 3"), Live.MineYieldAt(3), 3.125);
+	TestEqual(TEXT("Yield 1"), Live.MineYieldAt(1), 1.0);
+	TestEqual(TEXT("Yield 2"), Live.MineYieldAt(2), 1.25);
+	TestEqual(TEXT("Yield 3"), Live.MineYieldAt(3), 1.5625);
 	TestEqual(TEXT("No maximum: very deep veins stay within int32"), Live.DeepenCost(100), MAX_int32);
 
 	// The prototype: an endless mine with a fixed yield.
@@ -461,8 +468,11 @@ bool FCytraEarlyLaunchMineTest::RunTest(const FString& Parameters)
 	const int32 WouldHaveMined = Waiting.GetWallet().Mined - Mined;
 
 	Match->ConsumeEffects();
+	const int32 Announced = Match->MineGoldAhead();
 	const FCytraLaunchResult Launch = Match->LaunchWave();
 	TestTrue(TEXT("Launched"), Launch.bLaunched);
+	TestEqual(TEXT("As announced on the button"), Launch.MineGold, Announced);
+	TestEqual(TEXT("Nothing announced during the wave"), Match->MineGoldAhead(), 0);
 	TestEqual(TEXT("Every period left, 2 gold each"), Launch.MineGold, 2 * FMath::FloorToInt32((MineTime + Left) / 6.0));
 	TestEqual(TEXT("As much as waiting would have paid"), Launch.MineGold, WouldHaveMined);
 	TestTrue(TEXT("Something paid"), Launch.MineGold > 0);
@@ -479,6 +489,7 @@ bool FCytraEarlyLaunchMineTest::RunTest(const FString& Parameters)
 	if (First && OpenMine(*this, *First))
 	{
 		StepFor(*First, 3.0);
+		TestEqual(TEXT("Nothing announced for wave 1"), First->MineGoldAhead(), 0);
 		TestEqual(TEXT("Nothing for wave 1"), First->LaunchWave().MineGold, 0);
 	}
 
@@ -487,6 +498,7 @@ bool FCytraEarlyLaunchMineTest::RunTest(const FString& Parameters)
 	TOptional<FCytraMatch> Off = MakePrep(*this, Prototype);
 	if (Off)
 	{
+		TestEqual(TEXT("Nothing announced in the prototype"), Off->MineGoldAhead(), 0);
 		TestEqual(TEXT("Nothing in the prototype"), Off->LaunchWave().MineGold, 0);
 	}
 	return true;
@@ -508,11 +520,46 @@ bool FCytraEarlyLaunchReserveTest::RunTest(const FString& Parameters)
 	FCytraMineState* State = const_cast<FCytraGrid&>(Match->GetGrid()).FindMine(Mine);
 	State->Reserve = 3;
 	Match->ConsumeEvents();
+	TestEqual(TEXT("Announced within the reserve"), Match->MineGoldAhead(), 3);
 	const FCytraLaunchResult Launch = Match->LaunchWave();
 	TestEqual(TEXT("Only what is left"), Launch.MineGold, 3);
 	TestTrue(TEXT("Exhausted"), MineState(*Match).IsExhausted());
 	TestTrue(TEXT("Exhaustion event"), HasEvent(Match->ConsumeEvents(), ECytraMatchEventType::MineExhausted));
 	TestEqual(TEXT("The miner leaves"), Match->MinersAtMine(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCytraMineEverySecondTest, "Cytra.Rules.Mine.EverySecond", CytraTest::Flags)
+
+bool FCytraMineEverySecondTest::RunTest(const FString& Parameters)
+{
+	FSetup Setup;
+	Setup.bEverySecond = true;
+	Setup.bExtraction = true;
+	Setup.bEarlyLaunchMine = true;
+	Setup.Reserve = 1000;
+	TOptional<FCytraMatch> Match = MakePrep(*this, Setup);
+	if (!Match)
+	{
+		return false;
+	}
+	const FCytraPanelView Open = FCytraPanelView::Build(*Match, Mine);
+	TestEqual(TEXT("Income"), StatText(Open, 0), FString(TEXT("Revenu 1 or chaque seconde")));
+
+	// A miner pays 1 gold a second.
+	const int32 Mined = Match->GetWallet().Mined;
+	StepFor(*Match, 10.0);
+	TestEqual(TEXT("10 gold in 10 s"), Match->GetWallet().Mined - Mined, 10);
+
+	// At extraction level 2, 1.25 gold a second: the button announces the carried fraction as the launch pays it.
+	FCytraMineState* State = const_cast<FCytraGrid&>(Match->GetGrid()).FindMine(Mine);
+	State->Extraction = 2;
+	StepFor(*Match, 1.5);
+	const FCytraPanelView Improved = FCytraPanelView::Build(*Match, Mine);
+	TestEqual(TEXT("Income at level 2"), StatText(Improved, 0), FString::Printf(TEXT("Revenu %s or chaque seconde"), *FText::AsNumber(1.25).ToString()));
+	const int32 Announced = Match->MineGoldAhead();
+	TestTrue(TEXT("Something announced"), Announced > 0);
+	TestEqual(TEXT("Paid as announced"), Match->LaunchWave().MineGold, Announced);
 	return true;
 }
 

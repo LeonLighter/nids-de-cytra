@@ -117,7 +117,8 @@ bool FCytraDataLiveBalanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("No free miner"), Balance.Roles.FindChecked(TEXT("Miner")).FreeRecruits, 0);
 	TestEqual(TEXT("No early launch bonus"), Balance.EarlyLaunchBonus(45.0), 0);
 	TestEqual(TEXT("Mine opening"), Balance.Works.FindChecked(TEXT("OpenMine")).Cost, 150);
-	TestEqual(TEXT("Mine period"), Balance.MinePeriod, 4.0);
+	TestEqual(TEXT("Mine period"), Balance.MinePeriod, 1.0);
+	TestEqual(TEXT("Mine yield, 1 gold a second"), Balance.MineYield, 1);
 	TestTrue(TEXT("Early launch pays the mine"), Balance.bEarlyLaunchMine);
 	TestTrue(TEXT("Mine with veins"), Balance.MineVein.bEnabled);
 	TestEqual(TEXT("Veins dug by miners"), Balance.MineVein.Role, FName(TEXT("Miner")));

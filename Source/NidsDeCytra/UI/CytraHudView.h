@@ -13,10 +13,10 @@ struct NIDSDECYTRA_API FCytraHudView
 	static FText Forecast(const FCytraMatch& Match, int32 WaveIndex);
 
 	/**
-	 * Label of the launch button between waves. It shows the early launch bonus only when there is one:
-	 * without a countdown, or with a bonus of 0, it names the wave to launch (1-based NextWave).
+	 * Label of the launch button between waves. It shows the early launch bonus and the gold of the mine only when there
+	 * is some: without a countdown, or when both are 0, it names the wave to launch (1-based NextWave).
 	 */
-	static FText LaunchLabel(bool bHasCountdown, int32 EarlyLaunchBonus, int32 NextWave);
+	static FText LaunchLabel(bool bHasCountdown, int32 EarlyLaunchBonus, int32 MineGold, int32 NextWave);
 };
 
 /** Content of the end screen, after updateUI() in the prototype, with the wave and the eggs the GDD asks for. */

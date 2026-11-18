@@ -214,6 +214,11 @@ public:
 	int32 MinersAtMine() const;
 	/** Miners extracting gold now. */
 	int32 MinersMining() const;
+	/**
+	 * Gold that launching the next wave now would pay from the mine, as LaunchWave computes it: 0 without a countdown
+	 * or when the data leave it out.
+	 */
+	int32 MineGoldAhead() const;
 	/** The first opened mine with gold left, where idle miners go; null if none. */
 	const FIntPoint* FindWorkableMine() const;
 	double GetTime() const { return Time; }
